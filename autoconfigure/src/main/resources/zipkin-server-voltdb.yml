@@ -1,0 +1,6 @@
+# When enabled, this allows shorter env properties (ex -Dspring.profiles.active=voltdb)
+zipkin:
+  storage:
+    voltdb:
+      host: ${VOLTDB_HOST:localhost:21212}
+      ensure-schema: ${VOLTDB_ENSURE_SCHEMA:true}
