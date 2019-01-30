@@ -30,6 +30,7 @@ import zipkin2.internal.Nullable;
 public abstract class AggregateCall<I, O> extends Call.Base<O> {
 
   public static Call<Void> create(List<Call<Void>> calls) {
+    if (calls.size() == 1) return calls.get(0);
     return new AggregateVoidCall(calls);
   }
 

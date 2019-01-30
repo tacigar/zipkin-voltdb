@@ -102,7 +102,7 @@ public final class VoltDBStorage extends StorageComponent {
         throw new RuntimeException("Unable to establish connection to VoltDB server", e);
       }
       if (ensureSchema) {
-        Schema.ensureExists(client);
+        Schema.ensureExists(client, host);
       } else {
         LOG.fine("Skipping schema check as ensureSchema was false");
       }
