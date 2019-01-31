@@ -21,6 +21,8 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy;
 import zipkin2.CheckResult;
 
+import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
+
 final class VoltDBStorageRule extends ExternalResource {
   static final Logger LOGGER = LoggerFactory.getLogger(VoltDBStorageRule.class);
   static final int VOLTDB_PORT = 21212;
@@ -36,9 +38,9 @@ final class VoltDBStorageRule extends ExternalResource {
     try {
       LOGGER.info("Starting docker image " + image);
       container = new GenericContainer(image)
-        .withEnv("HOST_COUNT", "1")
-        .withExposedPorts(VOLTDB_PORT)
-        .waitingFor(new HostPortWaitStrategy());
+          .withEnv("HOST_COUNT", "1")
+          .withExposedPorts(VOLTDB_PORT)
+          .waitingFor(new HostPortWaitStrategy());
       container.start();
       System.out.println("Starting docker image " + image);
     } catch (RuntimeException e) {
@@ -78,10 +80,13 @@ final class VoltDBStorageRule extends ExternalResource {
     }
   }
 
+  void clear() throws Exception {
+    if (storage == null) return;
+    executeAdHoc(storage.client, "Truncate table " + Schema.TABLE_SPAN);
+  }
+
   @Override protected void after() {
-    if (storage != null) {
-      storage.close();
-    }
+    if (storage != null) storage.close();
     if (container != null) {
       LOGGER.info("Stopping docker image " + image);
       container.stop();

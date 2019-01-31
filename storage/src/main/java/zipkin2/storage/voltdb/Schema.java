@@ -31,14 +31,15 @@ final class Schema {
   static final String
       TABLE_SPAN = "span",
       PROCEDURE_STORE_SPAN = "storeSpanJson",
-      PROCEDURE_GET_SPAN = "getSpanJson";
+      PROCEDURE_GET_SPAN = "getSpanJson",
+      PROCEDURE_GET_SPANS = "getSpansJson";
 
-  static void ensureExists(Client client) {
+  static void ensureExists(Client client, String host) {
     try {
       executeAdHoc(client, "Select count(*) from " + Schema.TABLE_SPAN);
     } catch (ProcCallException e) {
       if (e.getMessage().contains("object not found")) {
-        LOG.info("Installing schema " + SCHEMA_RESOURCE);
+        LOG.info("Installing schema " + SCHEMA_RESOURCE + " on host " + host);
         applyCqlFile(client, SCHEMA_RESOURCE);
       }
     } catch (Exception e) {

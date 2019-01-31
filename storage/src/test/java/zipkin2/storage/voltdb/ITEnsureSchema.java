@@ -25,9 +25,10 @@ abstract class ITEnsureSchema {
   @Test public void installsTablesWhenMissing() throws Exception {
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_STORE_SPAN);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SPAN);
+    executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SPANS);
     executeAdHoc(client(), "Drop table " + Schema.TABLE_SPAN);
 
-    Schema.ensureExists(client());
+    Schema.ensureExists(client(), "localhost");
 
     executeAdHoc(client(), "Select count(*) from " + Schema.TABLE_SPAN);
   }

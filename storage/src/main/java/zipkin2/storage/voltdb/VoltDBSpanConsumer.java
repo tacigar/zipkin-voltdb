@@ -20,6 +20,7 @@ import java.util.List;
 import org.voltdb.client.Client;
 import org.voltdb.client.ClientResponse;
 import zipkin2.Call;
+import zipkin2.Callback;
 import zipkin2.Span;
 import zipkin2.codec.SpanBytesEncoder;
 import zipkin2.storage.SpanConsumer;
@@ -53,15 +54,25 @@ final class VoltDBSpanConsumer implements SpanConsumer {
     return AggregateCall.create(calls);
   }
 
-  static final class StoreSpanJson extends VoltDBCall<Void> {
-    static VoltDBCall<Void> create(Client client, Span span) {
+  static final class StoreSpanJson extends VoltDBCall<Void> implements Call.ErrorHandler<Void> {
+    static Call<Void> create(Client client, Span span) {
       byte[] json = SpanBytesEncoder.JSON_V2.encode(span);
       byte[] md5 = MD5.get().digest(json);
-      return new StoreSpanJson(client, span.traceId(), span.id(), md5, json);
+      StoreSpanJson result =
+          new StoreSpanJson(client, span.traceId(), span.id(), span.timestamp(), md5, json);
+      return result.handleError(result);
     }
 
     StoreSpanJson(Client client, Object... parameters) {
       super(client, PROCEDURE_STORE_SPAN, parameters);
+    }
+
+    @Override public void onErrorReturn(Throwable error, Callback<Void> callback) {
+      if (error.getMessage().contains("CONSTRAINT VIOLATION")) {
+        callback.onSuccess(null); // ignore dupes
+      } else {
+        callback.onError(error);
+      }
     }
 
     @Override Void convert(ClientResponse response) {

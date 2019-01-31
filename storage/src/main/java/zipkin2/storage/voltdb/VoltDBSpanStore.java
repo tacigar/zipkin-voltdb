@@ -14,6 +14,7 @@
 package zipkin2.storage.voltdb;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
@@ -23,26 +24,58 @@ import zipkin2.Call;
 import zipkin2.DependencyLink;
 import zipkin2.Span;
 import zipkin2.codec.SpanBytesDecoder;
+import zipkin2.storage.GroupByTraceId;
 import zipkin2.storage.QueryRequest;
 import zipkin2.storage.SpanStore;
 
 import static zipkin2.storage.voltdb.Schema.PROCEDURE_GET_SPAN;
+import static zipkin2.storage.voltdb.Schema.PROCEDURE_GET_SPANS;
+import static zipkin2.storage.voltdb.Schema.UTF_8;
 
 final class VoltDBSpanStore implements SpanStore {
 
   final Client client;
+  final boolean searchEnabled = true;
 
   VoltDBSpanStore(VoltDBStorage storage) {
     client = storage.client;
   }
 
   @Override public Call<List<List<Span>>> getTraces(QueryRequest request) {
-    return Call.emptyList(); // search is disabled except trace ID
+    if (!searchEnabled) return Call.emptyList();
+
+    long endMillis = request.endTs();
+    long beginMillis = endMillis - request.lookback();
+
+    return new GetSpansJson(client, beginMillis, endMillis);
   }
 
   @Override public Call<List<Span>> getTrace(String hexTraceId) {
     // make sure we have a 16 or 32 character trace ID
     return new GetSpanJson(client, Span.normalizeTraceId(hexTraceId));
+  }
+
+  static final class GetSpansJson extends VoltDBCall<List<List<Span>>> {
+    final long beginMillis, endMillis;
+    final Mapper<List<Span>, List<List<Span>>> groupByTraceId = GroupByTraceId.create(false);
+
+    GetSpansJson(Client client, long beginMillis, long endMillis) {
+      super(client, PROCEDURE_GET_SPANS, beginMillis, endMillis);
+      this.beginMillis = beginMillis;
+      this.endMillis = endMillis;
+    }
+
+    @Override List<List<Span>> convert(ClientResponse response) {
+      return groupByTraceId.map(decodeSpanJson(response));
+    }
+
+    @Override public Call<List<List<Span>>> clone() {
+      return new GetSpansJson(client, beginMillis, endMillis);
+    }
+
+    @Override public String toString() {
+      return "GetSpansJson(" + beginMillis + ", " + endMillis + ")";
+    }
   }
 
   static final class GetSpanJson extends VoltDBCall<List<Span>> {
@@ -54,13 +87,7 @@ final class VoltDBSpanStore implements SpanStore {
     }
 
     @Override List<Span> convert(ClientResponse response) {
-      VoltTable table = response.getResults()[0];
-      List<Span> spans = new ArrayList<>(table.getRowCount());
-      while (table.advanceRow()) {
-        byte[] json = (byte[]) table.get(0, VoltType.VARBINARY);
-        SpanBytesDecoder.JSON_V2.decode(json, spans);
-      }
-      return spans;
+      return decodeSpanJson(response);
     }
 
     @Override public Call<List<Span>> clone() {
@@ -82,5 +109,17 @@ final class VoltDBSpanStore implements SpanStore {
 
   @Override public Call<List<DependencyLink>> getDependencies(long endTs, long lookback) {
     return Call.emptyList(); // TODO: aggregate
+  }
+
+  static List<Span> decodeSpanJson(ClientResponse response) {
+    VoltTable table = response.getResults()[0];
+    if (table.getRowCount() == 0) return Collections.emptyList();
+
+    List<Span> spans = new ArrayList<>(table.getRowCount());
+    while (table.advanceRow()) {
+      String json = (String) table.get(0, VoltType.STRING);
+      SpanBytesDecoder.JSON_V2.decode(json.getBytes(UTF_8), spans);
+    }
+    return spans;
   }
 }
