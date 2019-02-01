@@ -13,11 +13,13 @@
  */
 package zipkin2.storage.voltdb;
 
+import java.util.function.Consumer;
 import org.junit.AssumptionViolatedException;
 import org.junit.rules.ExternalResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy;
 import zipkin2.CheckResult;
 
@@ -40,6 +42,12 @@ final class VoltDBStorageRule extends ExternalResource {
       container = new GenericContainer(image)
           .withEnv("HOST_COUNT", "1")
           .withExposedPorts(VOLTDB_PORT)
+          .withLogConsumer(new Consumer<OutputFrame>() {
+            @Override public void accept(OutputFrame outputFrame) {
+              String string = outputFrame.getUtf8String();
+              if (string.startsWith("WARN")) System.out.println(outputFrame.getUtf8String());
+            }
+          })
           .waitingFor(new HostPortWaitStrategy());
       container.start();
       System.out.println("Starting docker image " + image);

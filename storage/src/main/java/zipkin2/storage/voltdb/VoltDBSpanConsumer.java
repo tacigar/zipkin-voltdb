@@ -59,8 +59,8 @@ final class VoltDBSpanConsumer implements SpanConsumer {
       byte[] json = SpanBytesEncoder.JSON_V2.encode(span);
       byte[] md5 = MD5.get().digest(json);
       StoreSpanJsonCall result = new StoreSpanJsonCall(client,
-          span.traceId(), span.id(), span.localServiceName(), span.name(), span.timestamp(),
-          span.duration(), span.tags().containsKey("error") ? 1 : 0, md5, json);
+          span.traceId(), span.id(), span.localServiceName(), span.remoteServiceName(), span.name(),
+          span.timestamp(), span.duration(), span.tags().containsKey("error") ? 1 : 0, md5, json);
       return result.handleError(result);
     }
 

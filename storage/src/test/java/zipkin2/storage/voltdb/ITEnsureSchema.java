@@ -16,6 +16,7 @@ package zipkin2.storage.voltdb;
 import org.junit.Test;
 import org.voltdb.client.Client;
 
+import static zipkin2.storage.voltdb.Schema.PROCEDURE_GET_SERVICE_NAMES;
 import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
 abstract class ITEnsureSchema {
@@ -26,6 +27,8 @@ abstract class ITEnsureSchema {
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_STORE_SPAN);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SPAN);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SPANS);
+    executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SERVICE_NAMES);
+    executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SPAN_NAMES);
     executeAdHoc(client(), "Drop table " + Schema.TABLE_SPAN);
 
     Schema.ensureExists(client(), "localhost");

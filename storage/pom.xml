@@ -42,7 +42,6 @@
       <groupId>org.voltdb</groupId>
       <artifactId>voltdb</artifactId>
       <version>8.4</version>
-      <scope>provided</scope>
     </dependency>
 
     <dependency>
