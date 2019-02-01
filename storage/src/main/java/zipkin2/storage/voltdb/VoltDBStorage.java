@@ -144,7 +144,7 @@ public final class VoltDBStorage extends StorageComponent {
       throws IOException, ProcCallException {
     ClientResponse response = client.callProcedure("@AdHoc", parameters);
     if (response.getStatus() != ClientResponse.SUCCESS) {
-      throw new IllegalStateException("@AdHoc" +
+      throw new RuntimeException("@AdHoc" +
           Arrays.toString(parameters) + " resulted in " + response.getStatus());
     }
     return response;

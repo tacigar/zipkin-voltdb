@@ -48,6 +48,18 @@ public class ITVoltDBStorage {
     }
   }
 
+  public static class ITInstallJavaProcedure extends zipkin2.storage.voltdb.ITInstallJavaProcedure {
+    @ClassRule public static VoltDBStorageRule voltdb = classRule();
+
+    @Override VoltDBStorage storage() {
+      return voltdb.storage;
+    }
+
+    @Before public void clear() throws Exception {
+      voltdb.clear();
+    }
+  }
+
   // This test is temporary playground to be removed later once things are implemented
   public static class ITBabySteps {
     @ClassRule public static VoltDBStorageRule voltdb = classRule();
