@@ -21,7 +21,7 @@ import org.voltdb.VoltType;
 /** Test class that just gets json from a trace as an array */
 public class GetTrace extends VoltProcedure {
 
-  public final SQLStmt GetTrace = new SQLStmt("SELECT json from span where trace_id = ?;");
+  public final SQLStmt GetTrace = new SQLStmt("SELECT json from Span where trace_id = ?;");
 
   public VoltTable run(String traceId) throws VoltAbortException {
     VoltTable[] queryresults;

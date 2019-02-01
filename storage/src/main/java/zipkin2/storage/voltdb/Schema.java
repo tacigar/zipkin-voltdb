@@ -29,10 +29,10 @@ final class Schema {
   static final Charset UTF_8 = Charset.forName("UTF-8");
   static final String SCHEMA_RESOURCE = "/ddl.sql";
   static final String
-      TABLE_SPAN = "span",
-      PROCEDURE_STORE_SPAN = "storeSpanJson",
-      PROCEDURE_GET_SPAN = "getSpanJson",
-      PROCEDURE_GET_SPANS = "getSpansJson";
+      TABLE_SPAN = "Span",
+      PROCEDURE_STORE_SPAN = "StoreSpanJson",
+      PROCEDURE_GET_SPAN = "GetSpanJson",
+      PROCEDURE_GET_SPANS = "GetSpansJson";
 
   static void ensureExists(Client client, String host) {
     try {

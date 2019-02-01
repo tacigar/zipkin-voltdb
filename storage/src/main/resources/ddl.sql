@@ -1,4 +1,4 @@
-CREATE TABLE span
+CREATE TABLE Span
 (
   trace_id VARCHAR(32) NOT NULL,
   id VARCHAR(16) NOT NULL,
@@ -13,14 +13,14 @@ CREATE TABLE span
 );
 
 -- Allows procedures to work on a trace as a unit
-PARTITION TABLE span ON COLUMN trace_id;
+PARTITION TABLE Span ON COLUMN trace_id;
 
-CREATE PROCEDURE storeSpanJson PARTITION ON TABLE span COLUMN trace_id PARAMETER 0 AS
-  INSERT INTO span (trace_id, id, service_name, name, ts, duration, is_error, md5, json)
+CREATE PROCEDURE StoreSpanJson PARTITION ON TABLE Span COLUMN trace_id PARAMETER 0 AS
+  INSERT INTO Span (trace_id, id, service_name, name, ts, duration, is_error, md5, json)
     VALUES (?, ?, ?, ?, TO_TIMESTAMP(Micros, ?), ?, ?, ?, ?);
 
-CREATE PROCEDURE getSpanJson PARTITION ON TABLE span COLUMN trace_id PARAMETER 0 AS
-  SELECT json from span where trace_id = ?;
+CREATE PROCEDURE GetSpanJson PARTITION ON TABLE Span COLUMN trace_id PARAMETER 0 AS
+  SELECT json from Span where trace_id = ?;
 
-CREATE PROCEDURE getSpansJson AS
-  SELECT json from span where ts BETWEEN TO_TIMESTAMP(Millis, ?) AND TO_TIMESTAMP(Millis, ?);
+CREATE PROCEDURE GetSpansJson AS
+  SELECT json from Span where ts BETWEEN TO_TIMESTAMP(Millis, ?) AND TO_TIMESTAMP(Millis, ?);
