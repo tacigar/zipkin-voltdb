@@ -49,22 +49,22 @@ final class VoltDBSpanConsumer implements SpanConsumer {
     if (spans.isEmpty()) return Call.create(null);
     List<Call<Void>> calls = new ArrayList<>();
     for (Span span : spans) {
-      calls.add(StoreSpanJson.create(client, span));
+      calls.add(StoreSpanJsonCall.create(client, span));
     }
     return AggregateCall.create(calls);
   }
 
-  static final class StoreSpanJson extends VoltDBCall<Void> implements Call.ErrorHandler<Void> {
+  static final class StoreSpanJsonCall extends VoltDBCall<Void> implements Call.ErrorHandler<Void> {
     static Call<Void> create(Client client, Span span) {
       byte[] json = SpanBytesEncoder.JSON_V2.encode(span);
       byte[] md5 = MD5.get().digest(json);
-      StoreSpanJson result = new StoreSpanJson(client,
+      StoreSpanJsonCall result = new StoreSpanJsonCall(client,
           span.traceId(), span.id(), span.localServiceName(), span.name(), span.timestamp(),
           span.duration(), span.tags().containsKey("error") ? 1 : 0, md5, json);
       return result.handleError(result);
     }
 
-    StoreSpanJson(Client client, Object... parameters) {
+    StoreSpanJsonCall(Client client, Object... parameters) {
       super(client, PROCEDURE_STORE_SPAN, parameters);
     }
 
@@ -81,7 +81,7 @@ final class VoltDBSpanConsumer implements SpanConsumer {
     }
 
     @Override public Call<Void> clone() {
-      return new StoreSpanJson(client, procName, parameters);
+      return new StoreSpanJsonCall(client, procName, parameters);
     }
   }
 }

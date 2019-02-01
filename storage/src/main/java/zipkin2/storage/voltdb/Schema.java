@@ -21,6 +21,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.voltdb.client.Client;
 import org.voltdb.client.ProcCallException;
+import zipkin2.storage.voltdb.procedure.GetSpansJson;
 
 import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
@@ -32,7 +33,7 @@ final class Schema {
       TABLE_SPAN = "Span",
       PROCEDURE_STORE_SPAN = "StoreSpanJson",
       PROCEDURE_GET_SPAN = "GetSpanJson",
-      PROCEDURE_GET_SPANS = "GetSpansJson";
+      PROCEDURE_GET_SPANS = GetSpansJson.class.getSimpleName();
 
   static void ensureExists(Client client, String host) {
     try {
@@ -40,14 +41,19 @@ final class Schema {
     } catch (ProcCallException e) {
       if (e.getMessage().contains("object not found")) {
         LOG.info("Installing schema " + SCHEMA_RESOURCE + " on host " + host);
-        applyCqlFile(client, SCHEMA_RESOURCE);
+        applySqlFile(client, SCHEMA_RESOURCE);
+        try {
+          InstallJavaProcedure.installProcedure(client, GetSpansJson.class);
+        } catch (Exception e1) {
+          LOG.log(Level.SEVERE, e.getMessage(), e1);
+        }
       }
     } catch (Exception e) {
       LOG.log(Level.SEVERE, e.getMessage(), e);
     }
   }
 
-  static void applyCqlFile(Client client, String resource) {
+  static void applySqlFile(Client client, String resource) {
     try (Reader reader = new InputStreamReader(Schema.class.getResourceAsStream(resource), UTF_8)) {
       for (String cmd : CharStreams.toString(reader).split(";", -1)) {
         if (cmd.trim().isEmpty()) continue;

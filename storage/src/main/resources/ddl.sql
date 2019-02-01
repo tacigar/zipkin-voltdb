@@ -21,6 +21,3 @@ CREATE PROCEDURE StoreSpanJson PARTITION ON TABLE Span COLUMN trace_id PARAMETER
 
 CREATE PROCEDURE GetSpanJson PARTITION ON TABLE Span COLUMN trace_id PARAMETER 0 AS
   SELECT json from Span where trace_id = ?;
-
-CREATE PROCEDURE GetSpansJson AS
-  SELECT json from Span where ts BETWEEN TO_TIMESTAMP(Millis, ?) AND TO_TIMESTAMP(Millis, ?);

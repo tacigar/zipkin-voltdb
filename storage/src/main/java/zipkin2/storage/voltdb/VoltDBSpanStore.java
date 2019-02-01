@@ -43,23 +43,19 @@ final class VoltDBSpanStore implements SpanStore {
 
   @Override public Call<List<List<Span>>> getTraces(QueryRequest request) {
     if (!searchEnabled) return Call.emptyList();
-
-    long endMillis = request.endTs();
-    long beginMillis = endMillis - request.lookback();
-
-    return new GetSpansJson(client, beginMillis, endMillis);
+    return new GetSpansJsonCall(client, request.endTs(), request.lookback());
   }
 
   @Override public Call<List<Span>> getTrace(String hexTraceId) {
     // make sure we have a 16 or 32 character trace ID
-    return new GetSpanJson(client, Span.normalizeTraceId(hexTraceId));
+    return new GetSpanJsonCall(client, Span.normalizeTraceId(hexTraceId));
   }
 
-  static final class GetSpansJson extends VoltDBCall<List<List<Span>>> {
+  static final class GetSpansJsonCall extends VoltDBCall<List<List<Span>>> {
     final long beginMillis, endMillis;
     final Mapper<List<Span>, List<List<Span>>> groupByTraceId = GroupByTraceId.create(false);
 
-    GetSpansJson(Client client, long beginMillis, long endMillis) {
+    GetSpansJsonCall(Client client, long beginMillis, long endMillis) {
       super(client, PROCEDURE_GET_SPANS, beginMillis, endMillis);
       this.beginMillis = beginMillis;
       this.endMillis = endMillis;
@@ -70,7 +66,7 @@ final class VoltDBSpanStore implements SpanStore {
     }
 
     @Override public Call<List<List<Span>>> clone() {
-      return new GetSpansJson(client, beginMillis, endMillis);
+      return new GetSpansJsonCall(client, beginMillis, endMillis);
     }
 
     @Override public String toString() {
@@ -78,10 +74,10 @@ final class VoltDBSpanStore implements SpanStore {
     }
   }
 
-  static final class GetSpanJson extends VoltDBCall<List<Span>> {
+  static final class GetSpanJsonCall extends VoltDBCall<List<Span>> {
     final String traceId;
 
-    GetSpanJson(Client client, String traceId) {
+    GetSpanJsonCall(Client client, String traceId) {
       super(client, PROCEDURE_GET_SPAN, traceId);
       this.traceId = traceId;
     }
@@ -91,7 +87,7 @@ final class VoltDBSpanStore implements SpanStore {
     }
 
     @Override public Call<List<Span>> clone() {
-      return new GetSpanJson(client, traceId);
+      return new GetSpanJsonCall(client, traceId);
     }
 
     @Override public String toString() {
