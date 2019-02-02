@@ -27,7 +27,7 @@ import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 final class InstallJavaProcedure {
 
   /** This installs a procedure that has no dependencies apart from VoltDB */
-  static void installProcedure(Client client, Class<?> type) throws Exception {
+  static void installProcedure(Client client, Class<?> type, String partition) throws Exception {
     ByteArrayOutputStream bout = new ByteArrayOutputStream();
     JarOutputStream jarOut = new JarOutputStream(bout);
 
@@ -59,7 +59,8 @@ final class InstallJavaProcedure {
       throw new RuntimeException(
           "@UpdateClasses for " + type.getName() + " resulted in " + response.getStatus());
     }
-    executeAdHoc(client, "CREATE PROCEDURE FROM CLASS  " + type.getName());
+    executeAdHoc(client, "CREATE PROCEDURE " + (partition != null ?
+        (" PARTITION ON " + partition) : "") + " FROM CLASS " + type.getName() + ";");
   }
 
   private static final int BUF_SIZE = 0x800; // 2K chars (4K bytes)

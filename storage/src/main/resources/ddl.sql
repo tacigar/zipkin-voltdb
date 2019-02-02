@@ -16,13 +16,8 @@ CREATE TABLE Span
 -- Allows procedures to work on a trace as a unit
 PARTITION TABLE Span ON COLUMN trace_id;
 
-CREATE PROCEDURE StoreSpanJson PARTITION ON TABLE Span COLUMN trace_id PARAMETER 0 AS
-  INSERT INTO Span (
-    trace_id, id, service_name, remote_service_name, name, ts, duration, is_error, md5, json
-  ) VALUES (?, ?, ?, ?, ?, TO_TIMESTAMP(Micros, ?), ?, ?, ?, ?);
-
 CREATE PROCEDURE GetSpanJson PARTITION ON TABLE Span COLUMN trace_id PARAMETER 0 AS
-  SELECT json from Span where trace_id = ?;
+  SELECT json from Span where trace_id = ? ORDER BY ts;
 
 CREATE PROCEDURE GetSpanNames AS
-  SELECT distinct(name) from Span where service_name = ? or remote_service_name = ?;
+  SELECT distinct(name) from Span where service_name = ? or remote_service_name = ? ORDER BY name;

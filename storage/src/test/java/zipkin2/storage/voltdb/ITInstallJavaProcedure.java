@@ -32,7 +32,8 @@ abstract class ITInstallJavaProcedure {
   abstract VoltDBStorage storage();
 
   @Test public void getTrace_javaProcedure() throws Exception {
-    InstallJavaProcedure.installProcedure(storage().client, GetTrace.class);
+    InstallJavaProcedure.installProcedure(storage().client, GetTrace.class,
+        "TABLE " + Schema.TABLE_SPAN + " COLUMN trace_id PARAMETER 0");
 
     assertThat(store().getTrace(CLIENT_SPAN.traceId()).execute())
         .isEmpty();

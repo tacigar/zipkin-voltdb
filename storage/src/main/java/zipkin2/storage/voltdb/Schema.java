@@ -23,6 +23,7 @@ import org.voltdb.client.Client;
 import org.voltdb.client.ProcCallException;
 import zipkin2.storage.voltdb.procedure.GetServiceNames;
 import zipkin2.storage.voltdb.procedure.GetSpansJson;
+import zipkin2.storage.voltdb.procedure.StoreSpansJson;
 
 import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
@@ -32,7 +33,7 @@ final class Schema {
   static final String SCHEMA_RESOURCE = "/ddl.sql";
   static final String
       TABLE_SPAN = "Span",
-      PROCEDURE_STORE_SPAN = "StoreSpanJson",
+      PROCEDURE_STORE_SPAN = StoreSpansJson.class.getSimpleName(),
       PROCEDURE_GET_SPAN = "GetSpanJson",
       PROCEDURE_GET_SERVICE_NAMES = GetServiceNames.class.getSimpleName(),
       PROCEDURE_GET_SPAN_NAMES = "GetSpanNames",
@@ -46,8 +47,10 @@ final class Schema {
         LOG.info("Installing schema " + SCHEMA_RESOURCE + " on host " + host);
         applySqlFile(client, SCHEMA_RESOURCE);
         try {
-          InstallJavaProcedure.installProcedure(client, GetServiceNames.class);
-          InstallJavaProcedure.installProcedure(client, GetSpansJson.class);
+          InstallJavaProcedure.installProcedure(client, GetServiceNames.class, null);
+          InstallJavaProcedure.installProcedure(client, GetSpansJson.class, null);
+          InstallJavaProcedure.installProcedure(client, StoreSpansJson.class,
+              "TABLE " + Schema.TABLE_SPAN + " COLUMN trace_id");
         } catch (Exception e1) {
           LOG.log(Level.SEVERE, e.getMessage(), e1);
         }
