@@ -48,7 +48,10 @@ public class ZipkinVoltDBStorageAutoConfigurationTest {
 
   @Test public void providesStorageComponent_whenStorageTypeVoltDB() {
     context = new AnnotationConfigApplicationContext();
-    TestPropertyValues.of("zipkin.storage.type:voltdb").applyTo(context);
+    TestPropertyValues.of(
+        "zipkin.storage.type:voltdb",
+        "zipkin.storage.voltdb.scheduling.enabled:false"
+    ).applyTo(context);
     Access.registerVoltDB(context);
     context.refresh();
 
@@ -58,8 +61,9 @@ public class ZipkinVoltDBStorageAutoConfigurationTest {
   @Test public void canOverridesProperty_host() {
     context = new AnnotationConfigApplicationContext();
     TestPropertyValues.of(
-      "zipkin.storage.type:voltdb",
-      "zipkin.storage.voltdb.host:host1:21212"
+        "zipkin.storage.type:voltdb",
+        "zipkin.storage.voltdb.scheduling.enabled:false",
+        "zipkin.storage.voltdb.host:host1:21212"
     ).applyTo(context);
     Access.registerVoltDB(context);
     context.refresh();

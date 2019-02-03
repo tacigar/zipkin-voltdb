@@ -18,14 +18,17 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import zipkin2.storage.StorageComponent;
+import zipkin2.storage.voltdb.VoltDBStorage;
 
 @Configuration
+@EnableScheduling
 @EnableConfigurationProperties(ZipkinVoltDBStorageProperties.class)
 @ConditionalOnProperty(name = "zipkin.storage.type", havingValue = "voltdb")
 @ConditionalOnMissingBean(StorageComponent.class)
-  // This component is named .*VoltDB.* even though the package already says voltdb because
-  // Spring Boot configuration endpoints only printout the simple name of the class
+    // This component is named .*VoltDB.* even though the package already says voltdb because
+    // Spring Boot configuration endpoints only printout the simple name of the class
 class ZipkinVoltDBStorageAutoConfiguration {
 
   @Bean
@@ -33,4 +36,13 @@ class ZipkinVoltDBStorageAutoConfiguration {
   StorageComponent storage(ZipkinVoltDBStorageProperties properties) {
     return properties.toBuilder().build();
   }
+
+  @Bean
+  @ConditionalOnProperty(
+      value = "zipkin.storage.voltdb.scheduling.enabled", havingValue = "true", matchIfMissing = true
+  )
+  VoltDBScheduledTasks scheduledTasks(VoltDBStorage storage) {
+    return new VoltDBScheduledTasks(storage);
+  }
+
 }
