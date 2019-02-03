@@ -29,7 +29,8 @@ or complete traces. This would support use cases like shipping data to sinks tha
 A lot of storage problems are overload in nature. VoltDB is in-memory, but includes TTL of both time and also
 row count. Our first experiment of dependency linking in near real time proves we can get to a "done" trace.
 Using further analysis and export tables, we should be able to choose to drop a trace, or even trim it, based
-on after-the-fact information such as errors.
+on after-the-fact information such as errors. Thus, a lower volume of refined traces can be conditionally
+exported elsewhere.
 
 ## Quick Start
 Make sure you have [VoltDB](https://www.voltdb.com/try-voltdb/open-source-edition/) and it is running.
