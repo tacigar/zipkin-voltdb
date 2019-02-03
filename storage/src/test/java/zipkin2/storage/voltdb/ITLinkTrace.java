@@ -17,8 +17,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 import org.voltdb.VoltTable;
+import org.voltdb.client.Client;
 import org.voltdb.client.ClientResponse;
 import zipkin2.DependencyLink;
+import zipkin2.Span;
 import zipkin2.internal.DependencyLinker;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,17 +32,13 @@ abstract class ITLinkTrace {
 
   abstract VoltDBStorage storage();
 
-  @Test public void linkTrace_javaProcedure() throws Exception {
+  @Test public void linkTrace() throws Exception {
     storage().spanConsumer().accept(TRACE).execute();
 
     assertThat(callLinkTrace(CLIENT_SPAN.traceId()).getResults())
         .hasSize(2);
 
-    VoltTable table = executeAdHoc(storage().client,
-        "SELECT parent, child, call_count, error_count from DependencyLink").getResults()[0];
-
-    List<DependencyLink> links = toDependencyLinks(table);
-    assertThat(links).isEqualTo(new DependencyLinker().putTrace(TRACE).link());
+    assertLinksTableConsistentWith(storage().client, TRACE);
   }
 
   ClientResponse callLinkTrace(String traceId) throws Exception {
@@ -51,7 +49,14 @@ abstract class ITLinkTrace {
     return response;
   }
 
-  List<DependencyLink> toDependencyLinks(VoltTable table) {
+  static void assertLinksTableConsistentWith(Client client, List<Span> trace) throws Exception {
+    VoltTable table = executeAdHoc(client,
+        "SELECT parent, child, call_count, error_count from DependencyLink").getResults()[0];
+    List<DependencyLink> links = toDependencyLinks(table);
+    assertThat(links).isEqualTo(new DependencyLinker().putTrace(trace).link());
+  }
+
+  static List<DependencyLink> toDependencyLinks(VoltTable table) {
     List<DependencyLink> result = new ArrayList<>();
     while (table.advanceRow()) {
       DependencyLink.Builder builder = DependencyLink.newBuilder()

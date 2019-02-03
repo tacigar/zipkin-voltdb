@@ -34,7 +34,7 @@ import static zipkin2.storage.voltdb.Schema.TABLE_COMPLETE_TRACE;
 import static zipkin2.storage.voltdb.Schema.TABLE_PENDING_TRACE;
 import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
-abstract class ITCompletePendingTrace {
+abstract class ITCompletePendingTraces {
   int chunkSize = 5, minAgeSeconds = 5, maxAgeSeconds = 30;
 
   abstract VoltDBStorage storage();
@@ -43,7 +43,7 @@ abstract class ITCompletePendingTrace {
     String traceId = TRACE.get(0).traceId();
     storage().spanConsumer().accept(TRACE).execute();
 
-    expectNoopOnCompletePendingTrace(traceId);
+    expectNoopOnCompletePendingTraces(traceId);
   }
 
   @Test public void completesPendingTraceWhenOutsideWindow() throws Exception {
@@ -53,7 +53,7 @@ abstract class ITCompletePendingTrace {
     // change so that the trace is older than the check interval
     agePendingTraces(minAgeSeconds);
 
-    expectCompletePendingTrace(traceId);
+    expectCompletePendingTraces(traceId);
   }
 
   @Test public void doesntCompleteUntilAllSpansHaveDuration() throws Exception {
@@ -66,7 +66,7 @@ abstract class ITCompletePendingTrace {
 
     agePendingTraces(minAgeSeconds);
 
-    expectNoopOnCompletePendingTrace(root.traceId());
+    expectNoopOnCompletePendingTraces(root.traceId());
 
     // finish child, but only record its duration, not its parent ID
     storage().spanConsumer()
@@ -75,7 +75,7 @@ abstract class ITCompletePendingTrace {
 
     agePendingTraces(minAgeSeconds);
 
-    expectCompletePendingTrace(root.traceId());
+    expectCompletePendingTraces(root.traceId());
   }
 
   @Test public void completesIncompleteAfterMaxWindow() throws Exception {
@@ -89,7 +89,7 @@ abstract class ITCompletePendingTrace {
     agePendingTraces(maxAgeSeconds);
 
     // reports eventhough missing root
-    expectCompletePendingTrace(root.traceId());
+    expectCompletePendingTraces(root.traceId());
   }
 
   @Test public void doesntCompleteUntilRootIsReported() throws Exception {
@@ -102,14 +102,14 @@ abstract class ITCompletePendingTrace {
 
     agePendingTraces(minAgeSeconds);
 
-    expectNoopOnCompletePendingTrace(root.traceId());
+    expectNoopOnCompletePendingTraces(root.traceId());
 
     // report the root
     storage().spanConsumer().accept(asList(root)).execute();
 
     agePendingTraces(minAgeSeconds);
 
-    expectCompletePendingTrace(root.traceId());
+    expectCompletePendingTraces(root.traceId());
   }
 
   @Test public void resetsProcessingTimeOnLateUpdate() throws Exception {
@@ -123,7 +123,7 @@ abstract class ITCompletePendingTrace {
 
     agePendingTraces(minAgeSeconds);
 
-    expectCompletePendingTrace(root.traceId());
+    expectCompletePendingTraces(root.traceId());
 
     executeAdHoc(storage().client, "UPDATE " + TABLE_COMPLETE_TRACE
         + " SET process_ts = NOW");
@@ -135,7 +135,7 @@ abstract class ITCompletePendingTrace {
 
     agePendingTraces(minAgeSeconds);
 
-    expectCompletePendingTrace(root.traceId());
+    expectCompletePendingTraces(root.traceId());
 
     // unset processing flag alerts we should look again
     VoltTable table = executeAdHoc(storage().client,
@@ -156,14 +156,14 @@ abstract class ITCompletePendingTrace {
 
     agePendingTraces(minAgeSeconds);
 
-    expectNoopOnCompletePendingTrace(root.traceId());
+    expectNoopOnCompletePendingTraces(root.traceId());
 
     // report the late span
     storage().spanConsumer().accept(asList(late)).execute();
 
     agePendingTraces(minAgeSeconds);
 
-    expectCompletePendingTrace(root.traceId());
+    expectCompletePendingTraces(root.traceId());
   }
 
   @Test public void completePendingTrace_chunkSize() throws Exception {
@@ -173,7 +173,7 @@ abstract class ITCompletePendingTrace {
     agePendingTraces(minAgeSeconds);
 
     List<List<String>> partitionToTraceIds =
-        completePendingTrace(chunkSize, minAgeSeconds, maxAgeSeconds);
+        completePendingTraces(chunkSize, minAgeSeconds, maxAgeSeconds);
     // check each partition completed up to the requested chunk size of traces
     assertThat(partitionToTraceIds)
         .allSatisfy(l -> assertThat(l).hasSize(chunkSize));
@@ -189,8 +189,8 @@ abstract class ITCompletePendingTrace {
         + " SET update_ts = dateadd(second, -" + seconds + ", NOW)");
   }
 
-  void expectCompletePendingTrace(String traceId) throws Exception {
-    assertThat(completePendingTrace(chunkSize, minAgeSeconds, maxAgeSeconds))
+  void expectCompletePendingTraces(String traceId) throws Exception {
+    assertThat(completePendingTraces(chunkSize, minAgeSeconds, maxAgeSeconds))
         .flatExtracting(l -> l)
         .containsExactly(traceId);
 
@@ -198,8 +198,8 @@ abstract class ITCompletePendingTrace {
     assertThat(getTraceIds(TABLE_COMPLETE_TRACE)).containsExactly(traceId);
   }
 
-  void expectNoopOnCompletePendingTrace(String traceId) throws Exception {
-    assertThat(completePendingTrace(chunkSize, minAgeSeconds, maxAgeSeconds))
+  void expectNoopOnCompletePendingTraces(String traceId) throws Exception {
+    assertThat(completePendingTraces(chunkSize, minAgeSeconds, maxAgeSeconds))
         .flatExtracting(l -> l)
         .isEmpty();
 
@@ -207,10 +207,10 @@ abstract class ITCompletePendingTrace {
     assertThat(getTraceIds(TABLE_COMPLETE_TRACE)).isEmpty();
   }
 
-  List<List<String>> completePendingTrace(int chunkSize, long minAgeSeconds, long maxAgeSeconds)
+  List<List<String>> completePendingTraces(int chunkSize, long minAgeSeconds, long maxAgeSeconds)
       throws Exception {
     ClientResponseWithPartitionKey[] responses = storage().client.callAllPartitionProcedure(
-        "CompletePendingTrace", chunkSize, minAgeSeconds, maxAgeSeconds);
+        Schema.PROCEDURE_COMPLETE_PENDING_TRACES, chunkSize, minAgeSeconds, maxAgeSeconds);
     List<List<String>> result = new ArrayList<>();
     for (ClientResponseWithPartitionKey response : responses) {
       result.add(getStrings(response.response));

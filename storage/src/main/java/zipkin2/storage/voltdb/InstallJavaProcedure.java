@@ -56,7 +56,11 @@ final class InstallJavaProcedure {
       jarOut.putNextEntry(new ZipEntry(currentDir.toString()));
     }
 
-    addClass(type, jarOut);
+    // Allow subclassing in the same package
+    for (Class<?> toAdd = type; toAdd.getPackage().equals(type.getPackage());
+        toAdd = toAdd.getSuperclass()) {
+      addClass(toAdd, jarOut);
+    }
     jarOut.close();
 
     ClientResponse response =

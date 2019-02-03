@@ -21,9 +21,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.voltdb.client.Client;
 import org.voltdb.client.ProcCallException;
-import zipkin2.storage.voltdb.procedure.CompletePendingTrace;
+import zipkin2.storage.voltdb.procedure.CompletePendingTraces;
 import zipkin2.storage.voltdb.procedure.GetServiceNames;
 import zipkin2.storage.voltdb.procedure.GetSpansJson;
+import zipkin2.storage.voltdb.procedure.LinkCompleteTraces;
 import zipkin2.storage.voltdb.procedure.LinkTrace;
 import zipkin2.storage.voltdb.procedure.StoreSpansJson;
 
@@ -44,7 +45,8 @@ public final class Schema {
       PROCEDURE_GET_SPAN_NAMES = "GetSpanNames",
       PROCEDURE_GET_SPANS = GetSpansJson.class.getSimpleName(),
       PROCEDURE_LINK_TRACE = LinkTrace.class.getSimpleName(),
-      PROCEDURE_COMPLETE_PENDING_TRACE = CompletePendingTrace.class.getSimpleName();
+      PROCEDURE_COMPLETE_PENDING_TRACES = CompletePendingTraces.class.getSimpleName(),
+      PROCEDURE_LINK_COMPLETE_TRACES = LinkCompleteTraces.class.getSimpleName();
 
   static void ensureExists(Client client, String host) {
     try {
@@ -60,8 +62,10 @@ public final class Schema {
               "TABLE " + Schema.TABLE_SPAN + " COLUMN trace_id", false);
           InstallJavaProcedure.installProcedure(client, LinkTrace.class,
               "TABLE " + Schema.TABLE_DEPENDENCY_LINK + " COLUMN trace_id", true);
-          InstallJavaProcedure.installProcedure(client, CompletePendingTrace.class,
+          InstallJavaProcedure.installProcedure(client, CompletePendingTraces.class,
               "TABLE " + Schema.TABLE_PENDING_TRACE + " COLUMN trace_id", false);
+          InstallJavaProcedure.installProcedure(client, LinkCompleteTraces.class,
+              "TABLE " + Schema.TABLE_COMPLETE_TRACE + " COLUMN trace_id", false);
         } catch (Exception e1) {
           LOG.log(Level.SEVERE, e.getMessage(), e1);
         }

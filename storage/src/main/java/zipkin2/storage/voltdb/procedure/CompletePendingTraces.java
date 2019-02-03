@@ -27,10 +27,10 @@ import zipkin2.internal.SpanNode;
 import static zipkin2.storage.voltdb.Schema.TABLE_COMPLETE_TRACE;
 import static zipkin2.storage.voltdb.Schema.TABLE_PENDING_TRACE;
 import static zipkin2.storage.voltdb.Schema.TABLE_SPAN;
-import static zipkin2.storage.voltdb.procedure.LinkTrace.maybeNull;
+import static zipkin2.storage.voltdb.procedure.BaseLinkTrace.maybeNull;
 
-public class CompletePendingTrace extends VoltProcedure {
-  static final Logger LOG = Logger.getLogger(CompletePendingTrace.class.getName());
+public class CompletePendingTraces extends VoltProcedure {
+  static final Logger LOG = Logger.getLogger(CompletePendingTraces.class.getName());
 
   final SQLStmt oldTraceIds = new SQLStmt(
       "SELECT SINCE_EPOCH(SECOND, NOW) - SINCE_EPOCH(SECOND, update_ts) AS age_seconds, trace_id"
