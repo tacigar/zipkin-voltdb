@@ -29,8 +29,11 @@ abstract class ITEnsureSchema {
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SERVICE_NAMES);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SPAN_NAMES);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_LINK_TRACE);
+    executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_COMPLETE_PENDING_TRACE);
     executeAdHoc(client(), "Drop table " + Schema.TABLE_SPAN);
     executeAdHoc(client(), "Drop table " + Schema.TABLE_DEPENDENCY_LINK);
+    executeAdHoc(client(), "Drop table " + Schema.TABLE_PENDING_TRACE);
+    executeAdHoc(client(), "Drop table " + Schema.TABLE_COMPLETE_TRACE);
 
     Schema.ensureExists(client(), "localhost");
 

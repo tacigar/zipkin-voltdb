@@ -111,4 +111,16 @@ public class ITVoltDBStorage {
       voltdb.clear();
     }
   }
+
+  public static class ITCompletePendingTrace extends zipkin2.storage.voltdb.ITCompletePendingTrace {
+    @ClassRule public static VoltDBStorageRule voltdb = classRule();
+
+    @Override VoltDBStorage storage() {
+      return voltdb.storage;
+    }
+
+    @Before public void clear() throws Exception {
+      voltdb.clear();
+    }
+  }
 }

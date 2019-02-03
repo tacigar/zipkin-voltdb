@@ -37,3 +37,24 @@ CREATE TABLE DependencyLink
 
 -- Allows procedures to work on a trace as a unit
 PARTITION TABLE DependencyLink ON COLUMN trace_id;
+
+-- Inserts into Span should imply an upsert here.
+-- After a quiet period, rows should be processed and upserted into CompleteTrace
+CREATE TABLE PendingTrace
+(
+  trace_id VARCHAR(32) NOT NULL,
+  update_ts TIMESTAMP NOT NULL,
+  PRIMARY KEY (trace_id)
+);
+
+PARTITION TABLE PendingTrace ON COLUMN trace_id;
+
+-- processing is decoupled, might imply exporting to multiple places
+CREATE TABLE CompleteTrace
+(
+  trace_id VARCHAR(32) NOT NULL,
+  process_ts TIMESTAMP, -- unset when we need to re-process a trace ID
+  PRIMARY KEY (trace_id)
+);
+
+PARTITION TABLE CompleteTrace ON COLUMN trace_id;

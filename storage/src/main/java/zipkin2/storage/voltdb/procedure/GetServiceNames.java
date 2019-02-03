@@ -17,12 +17,14 @@ import org.voltdb.SQLStmt;
 import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 
+import static zipkin2.storage.voltdb.Schema.TABLE_SPAN;
+
 public final class GetServiceNames extends VoltProcedure {
 
-  final SQLStmt serviceNames =
-      new SQLStmt("SELECT distinct(service_name) from Span order by service_name;");
-  final SQLStmt remoteServiceNames =
-      new SQLStmt("SELECT distinct(remote_service_name) from Span order by remote_service_name;");
+  final SQLStmt serviceNames = new SQLStmt(
+      "SELECT distinct(service_name) from " + TABLE_SPAN + " order by service_name");
+  final SQLStmt remoteServiceNames = new SQLStmt(
+      "SELECT distinct(remote_service_name) from " + TABLE_SPAN + " order by remote_service_name");
 
   public VoltTable[] run() throws VoltAbortException {
     voltQueueSQL(serviceNames);

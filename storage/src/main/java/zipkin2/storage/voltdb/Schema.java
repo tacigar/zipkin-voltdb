@@ -21,6 +21,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.voltdb.client.Client;
 import org.voltdb.client.ProcCallException;
+import zipkin2.storage.voltdb.procedure.CompletePendingTrace;
 import zipkin2.storage.voltdb.procedure.GetServiceNames;
 import zipkin2.storage.voltdb.procedure.GetSpansJson;
 import zipkin2.storage.voltdb.procedure.LinkTrace;
@@ -28,19 +29,22 @@ import zipkin2.storage.voltdb.procedure.StoreSpansJson;
 
 import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
-final class Schema {
+public final class Schema {
   static final Logger LOG = Logger.getLogger(Schema.class.getName());
   static final Charset UTF_8 = Charset.forName("UTF-8");
   static final String SCHEMA_RESOURCE = "/ddl.sql";
-  static final String
+  public static final String
       TABLE_SPAN = "Span",
+      TABLE_PENDING_TRACE = "PendingTrace",
+      TABLE_COMPLETE_TRACE = "CompleteTrace",
       TABLE_DEPENDENCY_LINK = "DependencyLink",
       PROCEDURE_STORE_SPAN = StoreSpansJson.class.getSimpleName(),
       PROCEDURE_GET_SPAN = "GetSpanJson",
       PROCEDURE_GET_SERVICE_NAMES = GetServiceNames.class.getSimpleName(),
       PROCEDURE_GET_SPAN_NAMES = "GetSpanNames",
       PROCEDURE_GET_SPANS = GetSpansJson.class.getSimpleName(),
-      PROCEDURE_LINK_TRACE = LinkTrace.class.getSimpleName();
+      PROCEDURE_LINK_TRACE = LinkTrace.class.getSimpleName(),
+      PROCEDURE_COMPLETE_PENDING_TRACE = CompletePendingTrace.class.getSimpleName();
 
   static void ensureExists(Client client, String host) {
     try {
@@ -56,6 +60,8 @@ final class Schema {
               "TABLE " + Schema.TABLE_SPAN + " COLUMN trace_id", false);
           InstallJavaProcedure.installProcedure(client, LinkTrace.class,
               "TABLE " + Schema.TABLE_DEPENDENCY_LINK + " COLUMN trace_id", true);
+          InstallJavaProcedure.installProcedure(client, CompletePendingTrace.class,
+              "TABLE " + Schema.TABLE_PENDING_TRACE + " COLUMN trace_id", false);
         } catch (Exception e1) {
           LOG.log(Level.SEVERE, e.getMessage(), e1);
         }

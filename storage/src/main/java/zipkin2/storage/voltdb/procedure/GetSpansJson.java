@@ -18,9 +18,11 @@ import org.voltdb.VoltProcedure;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 
+import static zipkin2.storage.voltdb.Schema.TABLE_SPAN;
+
 public final class GetSpansJson extends VoltProcedure {
   static final String TRACE_IDS_HEADER =
-      "SELECT trace_id from Span where ";
+      "SELECT trace_id from " + TABLE_SPAN + " where ";
   static final String TRACE_IDS_FOOTER =
       "ts BETWEEN TO_TIMESTAMP(Millis, ?) AND TO_TIMESTAMP(Millis, ?) ORDER BY trace_id LIMIT ?;";
 
@@ -35,7 +37,7 @@ public final class GetSpansJson extends VoltProcedure {
   final SQLStmt serviceNameSpanNameStatement =
       new SQLStmt(TRACE_IDS_HEADER + "service_name = ? AND name = ? AND " + TRACE_IDS_FOOTER);
 
-  final SQLStmt spans = new SQLStmt("SELECT json from Span where trace_id in ?;");
+  final SQLStmt spans = new SQLStmt("SELECT json from " + TABLE_SPAN + " where trace_id in ?;");
 
   public VoltTable[] run(String serviceName, String spanName, long endTs,
       long lookback, int limit)

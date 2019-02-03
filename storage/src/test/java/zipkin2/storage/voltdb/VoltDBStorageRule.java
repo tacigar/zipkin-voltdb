@@ -91,6 +91,9 @@ final class VoltDBStorageRule extends ExternalResource {
   void clear() throws Exception {
     if (storage == null) return;
     executeAdHoc(storage.client, "Truncate table " + Schema.TABLE_SPAN);
+    executeAdHoc(storage.client, "Truncate table " + Schema.TABLE_PENDING_TRACE);
+    executeAdHoc(storage.client, "Truncate table " + Schema.TABLE_COMPLETE_TRACE);
+    executeAdHoc(storage.client, "Truncate table " + Schema.TABLE_DEPENDENCY_LINK);
   }
 
   @Override protected void after() {
