@@ -1,8 +1,35 @@
 # zipkin-voltdb
-Shared libraries that provide Zipkin integration with VoltDB. Requires
-JRE 8.
+Shared libraries that provide Zipkin integration with VoltDB. Requires JRE 8.
 
 *This is not production ready at the moment. Things will change!*
+
+## Why?
+We've had many requests for late sampling, a SQL replacement for MySQL and something that supports higher
+ingest loads in general. [Bas van Beek](https://github.com/basvanbeek) used VoltDB for triaging timing
+data of another kind (marathons) and had the idea the storage could be ideal for Zipkin. [Lance](https://github.com/llinder),
+[Zoltan](https://github.com/abesto), Bas and I spiked some effort towards this during our [Pow-wow](https://cwiki.apache.org/confluence/display/ZIPKIN/2019-01-30+Zipkin+PPMC+Pow-wow). 
+
+## What's different?
+
+### Near Real Time Dependency Linking (Implemented)
+This experiment includes advanced features not present in other tools, such as automatic trace analysis.
+Notably, we keep state about last updates to traces, and then run some analysis to see if they are "done"
+or not. If so, we immediately perform dependency link aggregation as opposed to waiting for a cron to go
+off. In "laptop tests", we've found backlog performing as expected and it is really easy to tell using the
+VoltDB Console.
+
+![voltdb](https://user-images.githubusercontent.com/64215/52180732-60b7ce80-27ea-11e9-8fa4-568700125d1a.gif)
+
+### Streaming export (Partially implemented)
+We can [use VoltDB export tables](https://github.com/adriancole/zipkin-voltdb/pull/3) to
+stream data to other systems regardless of whether it is individual spans, metrics derived from them
+or complete traces. This would support use cases like shipping data to sinks that need 100% data like [Haystack Trends](https://github.com/ExpediaDotCom/haystack-trends).
+
+### Downsampling (Not yet implemented)
+A lot of storage problems are overload in nature. VoltDB is in-memory, but includes TTL of both time and also
+row count. Our first experiment of dependency linking in near real time proves we can get to a "done" trace.
+Using further analysis and export tables, we should be able to choose to drop a trace, or even trim it, based
+on after-the-fact information such as errors.
 
 ## Quick Start
 Make sure you have [VoltDB](https://www.voltdb.com/try-voltdb/open-source-edition/) and it is running.
