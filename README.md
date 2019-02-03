@@ -4,10 +4,10 @@ JRE 8.
 
 ## Storage
 The library that persists and queries collected spans is called
-`StorageComponent`. The [storage] module supports the Zipkin Api and all
+`StorageComponent`. The [storage](storage) module supports the Zipkin Api and all
 collector components.
 
 ## Autoconfigure
 The component in a zipkin server that configures settings for storage is
-is called auto-configuration, a Spring Boot concept. The [autoconfigure]
+is called auto-configuration, a Spring Boot concept. The [autoconfigure](storage)
 module plugs into an existing Zipkin server adding VoltDB support.
