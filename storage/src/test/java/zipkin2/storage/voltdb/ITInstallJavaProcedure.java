@@ -15,7 +15,6 @@ package zipkin2.storage.voltdb;
 
 import java.io.IOException;
 import org.junit.Test;
-import org.voltdb.VoltType;
 import org.voltdb.client.ClientResponse;
 import org.voltdb.client.ProcCallException;
 import zipkin2.Span;
@@ -25,7 +24,6 @@ import zipkin2.storage.SpanStore;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static zipkin2.TestObjects.CLIENT_SPAN;
-import static zipkin2.TestObjects.UTF_8;
 
 abstract class ITInstallJavaProcedure {
 
@@ -33,7 +31,7 @@ abstract class ITInstallJavaProcedure {
 
   @Test public void getTrace_javaProcedure() throws Exception {
     InstallJavaProcedure.installProcedure(storage().client, GetTrace.class,
-        "TABLE " + Schema.TABLE_SPAN + " COLUMN trace_id PARAMETER 0");
+        "TABLE " + Schema.TABLE_SPAN + " COLUMN trace_id PARAMETER 0", false);
 
     assertThat(store().getTrace(CLIENT_SPAN.traceId()).execute())
         .isEmpty();
@@ -50,8 +48,7 @@ abstract class ITInstallJavaProcedure {
         .hasSize(1)
         .flatExtracting(t -> {
           t.advanceRow();
-          String jsonList = t.get(0, VoltType.STRING).toString();
-          return SpanBytesDecoder.JSON_V2.decodeList(jsonList.getBytes(UTF_8));
+          return SpanBytesDecoder.JSON_V2.decodeList(t.getStringAsBytes(0));
         })
         .containsOnly(CLIENT_SPAN);
   }

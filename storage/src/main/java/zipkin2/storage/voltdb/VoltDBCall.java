@@ -50,19 +50,19 @@ abstract class VoltDBCall<V> extends Call.Base<V> {
 
   @Override protected void doEnqueue(Callback<V> callback) {
     class ProcedureCallbackAdapter implements ProcedureCallback {
-
-      @Override public void clientCallback(ClientResponse clientResponse) {
-        if (clientResponse.getStatus() == ClientResponse.SUCCESS) {
-          callback.onSuccess(convert(clientResponse));
+      @Override public void clientCallback(ClientResponse response) {
+        if (response.getStatus() == ClientResponse.SUCCESS) {
+          callback.onSuccess(convert(response));
           return;
         }
-        callback.onError(new RuntimeException(clientResponse.getStatusString()));
+        callback.onError(
+            new RuntimeException(procName + " returned " + response.getStatusString()));
       }
     }
 
     try {
       if (!client.callProcedure(new ProcedureCallbackAdapter(), procName, parameters)) {
-        throw new RuntimeException("procedure not callable");
+        throw new RuntimeException(procName + " not queued");
       }
     } catch (IOException e) {
       throw new RuntimeException(e);

@@ -20,14 +20,14 @@ import org.voltdb.VoltTable;
 public final class StoreSpansJson extends VoltProcedure {
 
   final SQLStmt insertSpan = new SQLStmt("INSERT INTO Span ("
-      + "trace_id, id, service_name, remote_service_name, name, ts, duration, is_error, md5, json"
-      + ") VALUES (?, ?, ?, ?, ?, TO_TIMESTAMP(Micros, ?), ?, ?, ?, ?)");
+      + "trace_id, parent_id, id, kind, service_name, remote_service_name, name, ts, duration, is_error, md5, json"
+      + ") VALUES (?, ?, ?, ?, ?, ?, ?, TO_TIMESTAMP(Micros, ?), ?, ?, ?, ?)");
 
-  public VoltTable[] run(String trace_id, String id,
+  public VoltTable[] run(String trace_id, String parent_id, String id, String kind,
       String service_name, String remote_service_name, String name,
       Long ts, Long duration, byte is_error, byte[] md5, byte[] json) throws VoltAbortException {
-    voltQueueSQL(insertSpan,
-        trace_id, id, service_name, remote_service_name, name, ts, duration, is_error, md5, json);
+    voltQueueSQL(insertSpan, trace_id, parent_id, id, kind, service_name, remote_service_name, name,
+        ts, duration, is_error, md5, json);
     return voltExecuteSQL();
   }
 }

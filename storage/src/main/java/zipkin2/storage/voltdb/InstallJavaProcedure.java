@@ -17,6 +17,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.jar.JarEntry;
+import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
 import org.voltdb.client.Client;
@@ -27,30 +29,34 @@ import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 final class InstallJavaProcedure {
 
   /** This installs a procedure that has no dependencies apart from VoltDB */
-  static void installProcedure(Client client, Class<?> type, String partition) throws Exception {
+  static void installProcedure(Client client, Class<?> type, String partition, boolean addZipkin)
+      throws Exception {
     ByteArrayOutputStream bout = new ByteArrayOutputStream();
     JarOutputStream jarOut = new JarOutputStream(bout);
 
-    String path = type.getName().replace('.', '/') + ".class";
+    if (addZipkin) { // add zipkin's core jar
+      JarInputStream jarIn = new JarInputStream(
+          zipkin2.Span.class.getProtectionDomain().getCodeSource().getLocation().openStream()
+      );
+      try {
+        copy(jarIn, jarOut);
+      } finally {
+        jarIn.close();
+      }
+    }
 
     // Jar format requires that you have an entry for each part of a directory path.
     // For example, to put a class under zipkin2/storage/voltdb, you need the path entries:
     // zipkin2/, zipkin2/storage/ and zipkin2/storage/voltdb/
-    String[] paths = path.substring(0, path.lastIndexOf('/')).split("/");
+    String[] paths = type.getName().substring(0, type.getName().lastIndexOf('.')).split("\\.");
     StringBuilder currentDir = new StringBuilder();
-    for (int i = 0; i < paths.length; i++) {
+    for (int i = addZipkin ? /* skip zipkin/storage/ */ 2 : 0; i < paths.length; i++) {
       currentDir.append(paths[i]).append('/');
+
       jarOut.putNextEntry(new ZipEntry(currentDir.toString()));
     }
 
-    // now, define the path of the class itself, followed by the bytecode of the class
-    jarOut.putNextEntry(new ZipEntry(path));
-    ClassLoader classLoader = type.getClassLoader();
-    if (classLoader == null) classLoader = ClassLoader.getSystemClassLoader();
-    try (InputStream classBytes = classLoader.getResourceAsStream(path)) {
-      copy(classBytes, jarOut); // this copies the bytecode of the type we want into the jar
-    }
-    jarOut.closeEntry();
+    addClass(type, jarOut);
     jarOut.close();
 
     ClientResponse response =
@@ -63,7 +69,32 @@ final class InstallJavaProcedure {
         (" PARTITION ON " + partition) : "") + " FROM CLASS " + type.getName() + ";");
   }
 
+  /** Adds the path of the class itself, followed by the bytecode of the class */
+  static void addClass(Class<?> type, JarOutputStream out) throws IOException {
+    String path = type.getName().replace('.', '/') + ".class";
+    out.putNextEntry(new ZipEntry(path));
+    ClassLoader classLoader = type.getClassLoader();
+    if (classLoader == null) classLoader = ClassLoader.getSystemClassLoader();
+    try (InputStream classBytes = classLoader.getResourceAsStream(path)) {
+      copy(classBytes, out); // this copies the bytecode of the type we want into the jar
+    }
+    out.closeEntry();
+  }
+
   private static final int BUF_SIZE = 0x800; // 2K chars (4K bytes)
+
+  private static void copy(JarInputStream jarIn, JarOutputStream jarOut) throws IOException {
+    byte[] buf = new byte[BUF_SIZE];
+    JarEntry nextEntry;
+    while ((nextEntry = jarIn.getNextJarEntry()) != null) {
+      jarOut.putNextEntry(nextEntry);
+
+      while (jarIn.available() == 1) {
+        int length = jarIn.read(buf, 0, buf.length);
+        if (length > 0) jarOut.write(buf, 0, length);
+      }
+    }
+  }
 
   /**
    * Adapted from {@code com.google.common.io.ByteStreams.copy()}.

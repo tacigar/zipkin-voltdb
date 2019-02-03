@@ -48,9 +48,7 @@ final class VoltDBSpanConsumer implements SpanConsumer {
   @Override public Call<Void> accept(List<Span> spans) {
     if (spans.isEmpty()) return Call.create(null);
     List<Call<Void>> calls = new ArrayList<>();
-    for (Span span : spans) {
-      calls.add(StoreSpanJsonCall.create(client, span));
-    }
+    for (Span span : spans) calls.add(StoreSpanJsonCall.create(client, span));
     return AggregateCall.create(calls);
   }
 
@@ -58,7 +56,9 @@ final class VoltDBSpanConsumer implements SpanConsumer {
     static Call<Void> create(Client client, Span span) {
       byte[] json = SpanBytesEncoder.JSON_V2.encode(span);
       byte[] md5 = MD5.get().digest(json);
-      StoreSpanJsonCall result = new StoreSpanJsonCall(client, span.traceId(), span.id(),
+      String kind = span.kind() != null ? span.kind().name() : null;
+      StoreSpanJsonCall result = new StoreSpanJsonCall(
+          client, span.traceId(), span.parentId(), span.id(), kind,
           span.localServiceName(), span.remoteServiceName(), span.name(),
           span.timestamp(), span.duration(),
           span.tags().containsKey("error") ? 1 : 0,
