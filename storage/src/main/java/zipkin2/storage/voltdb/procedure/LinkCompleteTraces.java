@@ -30,10 +30,10 @@ public class LinkCompleteTraces extends BaseLinkTrace {
   final SQLStmt updateCompleteTrace =
       new SQLStmt("UPDATE " + TABLE_COMPLETE_TRACE + " SET process_ts = NOW WHERE trace_id = ?");
 
-  public VoltTable run(String partitionValue, int chunkSize) {
-    if (chunkSize <= 0) throw new VoltAbortException("chunkSize must be > 0");
+  public VoltTable run(String partitionKey, int maxTraces) {
+    if (maxTraces < 1) throw new VoltAbortException("maxTraces < 1");
 
-    voltQueueSQL(pendingTraceIds, chunkSize);
+    voltQueueSQL(pendingTraceIds, maxTraces);
     VoltTable pendingTraceIdTable = voltExecuteSQL()[0];
 
     VoltTable result = new VoltTable(new VoltTable.ColumnInfo("trace_id", VoltType.STRING));

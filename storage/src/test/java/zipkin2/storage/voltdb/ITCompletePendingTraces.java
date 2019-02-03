@@ -35,7 +35,7 @@ import static zipkin2.storage.voltdb.Schema.TABLE_PENDING_TRACE;
 import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
 abstract class ITCompletePendingTraces {
-  int chunkSize = 5, minAgeSeconds = 5, maxAgeSeconds = 30;
+  int maxTraces = 5, minAgeSeconds = 5, maxAgeSeconds = 30;
 
   abstract VoltDBStorage storage();
 
@@ -166,17 +166,17 @@ abstract class ITCompletePendingTraces {
     expectCompletePendingTraces(root.traceId());
   }
 
-  @Test public void completePendingTrace_chunkSize() throws Exception {
+  @Test public void completePendingTrace_maxTraces() throws Exception {
     int traceCount = 100;
     storage().spanConsumer().accept(asList(copyOfRange(LOTS_OF_SPANS, 0, traceCount))).execute();
 
     agePendingTraces(minAgeSeconds);
 
     List<List<String>> partitionToTraceIds =
-        completePendingTraces(chunkSize, minAgeSeconds, maxAgeSeconds);
+        completePendingTraces(maxTraces, minAgeSeconds, maxAgeSeconds);
     // check each partition completed up to the requested chunk size of traces
     assertThat(partitionToTraceIds)
-        .allSatisfy(l -> assertThat(l).hasSize(chunkSize));
+        .allSatisfy(l -> assertThat(l).hasSize(maxTraces));
     int totalProcessed = partitionToTraceIds.stream().mapToInt(Collection::size).sum();
 
     assertThat(getTraceIds(TABLE_PENDING_TRACE)).hasSize(traceCount - totalProcessed);
@@ -190,7 +190,7 @@ abstract class ITCompletePendingTraces {
   }
 
   void expectCompletePendingTraces(String traceId) throws Exception {
-    assertThat(completePendingTraces(chunkSize, minAgeSeconds, maxAgeSeconds))
+    assertThat(completePendingTraces(maxTraces, minAgeSeconds, maxAgeSeconds))
         .flatExtracting(l -> l)
         .containsExactly(traceId);
 
@@ -199,7 +199,7 @@ abstract class ITCompletePendingTraces {
   }
 
   void expectNoopOnCompletePendingTraces(String traceId) throws Exception {
-    assertThat(completePendingTraces(chunkSize, minAgeSeconds, maxAgeSeconds))
+    assertThat(completePendingTraces(maxTraces, minAgeSeconds, maxAgeSeconds))
         .flatExtracting(l -> l)
         .isEmpty();
 
@@ -207,10 +207,10 @@ abstract class ITCompletePendingTraces {
     assertThat(getTraceIds(TABLE_COMPLETE_TRACE)).isEmpty();
   }
 
-  List<List<String>> completePendingTraces(int chunkSize, long minAgeSeconds, long maxAgeSeconds)
+  List<List<String>> completePendingTraces(int maxTraces, long minAgeSeconds, long maxAgeSeconds)
       throws Exception {
     ClientResponseWithPartitionKey[] responses = storage().client.callAllPartitionProcedure(
-        Schema.PROCEDURE_COMPLETE_PENDING_TRACES, chunkSize, minAgeSeconds, maxAgeSeconds);
+        Schema.PROCEDURE_COMPLETE_PENDING_TRACES, maxTraces, minAgeSeconds, maxAgeSeconds);
     List<List<String>> result = new ArrayList<>();
     for (ClientResponseWithPartitionKey response : responses) {
       result.add(getStrings(response.response));

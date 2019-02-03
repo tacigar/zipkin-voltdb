@@ -14,7 +14,6 @@
 package zipkin2.storage.voltdb;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import org.voltdb.VoltTable;
@@ -29,6 +28,7 @@ import zipkin2.storage.GroupByTraceId;
 import zipkin2.storage.QueryRequest;
 import zipkin2.storage.SpanStore;
 
+import static zipkin2.storage.voltdb.Schema.PROCEDURE_GET_DEPENDENCY_LINKS;
 import static zipkin2.storage.voltdb.Schema.PROCEDURE_GET_SERVICE_NAMES;
 import static zipkin2.storage.voltdb.Schema.PROCEDURE_GET_SPAN;
 import static zipkin2.storage.voltdb.Schema.PROCEDURE_GET_SPANS;
@@ -148,20 +148,52 @@ final class VoltDBSpanStore implements SpanStore {
   }
 
   @Override public Call<List<DependencyLink>> getDependencies(long endTs, long lookback) {
-    return Call.emptyList(); // TODO: aggregate
+    if (!searchEnabled) return Call.emptyList();
+    return new GetDependencyLinksCall(client, endTs, lookback);
+  }
+
+  static final class GetDependencyLinksCall extends VoltDBCall<List<DependencyLink>> {
+    final long endTs, lookback;
+
+    GetDependencyLinksCall(Client client, long endTs, long lookback) {
+      super(client, PROCEDURE_GET_DEPENDENCY_LINKS, endTs - lookback, endTs);
+      this.endTs = endTs;
+      this.lookback = lookback;
+    }
+
+    @Override List<DependencyLink> convert(ClientResponse response) {
+      List<DependencyLink> result = new ArrayList<>();
+      for (VoltTable table : response.getResults()) {
+        while (table.advanceRow()) {
+          result.add(DependencyLink.newBuilder()
+              .parent(table.getString(0))
+              .child(table.getString(1))
+              .callCount(table.getLong(2))
+              .errorCount(table.getLong(3))
+              .build());
+        }
+      }
+      return result;
+    }
+
+    @Override public Call<List<DependencyLink>> clone() {
+      return new GetDependencyLinksCall(client, endTs, lookback);
+    }
+
+    @Override public String toString() {
+      return "GetDependencyLinks(" + endTs + ", " + lookback + ")";
+    }
   }
 
   static List<Span> decodeSpanJson(ClientResponse response) {
-    int length = response.getResults().length == 0 ? 0 : response.getResults()[0].getRowCount();
-    if (length == 0) return Collections.emptyList();
-
-    VoltTable table = response.getResults()[0];
-    List<Span> spans = new ArrayList<>(length);
-    while (table.advanceRow()) {
-      byte[] json = table.getStringAsBytes(0);
-      SpanBytesDecoder.JSON_V2.decode(json, spans);
+    List<Span> result = new ArrayList<>();
+    for (VoltTable table : response.getResults()) {
+      while (table.advanceRow()) {
+        byte[] json = table.getStringAsBytes(0);
+        SpanBytesDecoder.JSON_V2.decode(json, result);
+      }
     }
-    return spans;
+    return result;
   }
 
   static List<String> decodeStrings(ClientResponse response) {

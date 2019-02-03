@@ -16,7 +16,6 @@ package zipkin2.storage.voltdb;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.voltdb.client.Client;
@@ -92,20 +91,37 @@ public final class VoltDBStorage extends StorageComponent {
     ensureSchema = builder.ensureSchema;
   }
 
-  final AtomicBoolean connected = new AtomicBoolean();
+  volatile boolean connected, closeCalled;
+
+  public Client client() {
+    connect();
+    return client;
+  }
 
   void connect() {
-    if (connected.compareAndSet(false, true)) {
-      try {
-        client.createConnection(host);
-      } catch (Exception e) {
-        throw new RuntimeException("Unable to establish connection to VoltDB server", e);
+    if (closeCalled) throw new IllegalStateException("closed");
+    if (!connected) {
+      // blocking to prevent access while initializing
+      synchronized (this) {
+        if (closeCalled) throw new IllegalStateException("closed");
+        if (!connected) {
+          doConnect();
+          connected = true;
+        }
       }
-      if (ensureSchema) {
-        Schema.ensureExists(client, host);
-      } else {
-        LOG.fine("Skipping schema check as ensureSchema was false");
-      }
+    }
+  }
+
+  void doConnect() { // guarded by this
+    try {
+      client.createConnection(host);
+    } catch (Exception e) {
+      throw new RuntimeException("Unable to establish connection to VoltDB server", e);
+    }
+    if (ensureSchema) {
+      Schema.ensureExists(client, host);
+    } else {
+      LOG.fine("Skipping schema check as ensureSchema was false");
     }
   }
 
@@ -130,6 +146,17 @@ public final class VoltDBStorage extends StorageComponent {
   }
 
   @Override public void close() {
+    if (closeCalled) return;
+    // blocking to prevent access while initializing
+    synchronized (this) {
+      if (!closeCalled) {
+        doClose();
+        closeCalled = true;
+      }
+    }
+  }
+
+  void doClose() { // guarded by this
     try {
       // block until all outstanding txns return
       client.drain();

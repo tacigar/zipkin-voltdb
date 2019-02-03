@@ -32,7 +32,7 @@ import static zipkin2.storage.voltdb.Schema.TABLE_DEPENDENCY_LINK;
 import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
 abstract class ITLinkCompleteTraces {
-  int chunkSize = 5;
+  int maxTraces = 5;
 
   abstract VoltDBStorage storage();
 
@@ -43,7 +43,7 @@ abstract class ITLinkCompleteTraces {
 
     markComplete(traceId);
 
-    assertThat(callLinkCompleteTraces(chunkSize))
+    assertThat(callLinkCompleteTraces(maxTraces))
         .flatExtracting(l -> l)
         .containsExactly(traceId);
 
@@ -62,7 +62,7 @@ abstract class ITLinkCompleteTraces {
 
     markProcessed(traceId);
 
-    assertThat(callLinkCompleteTraces(chunkSize))
+    assertThat(callLinkCompleteTraces(maxTraces))
         .flatExtracting(l -> l)
         .isEmpty();
 
@@ -74,7 +74,7 @@ abstract class ITLinkCompleteTraces {
         + " VALUES ('" + traceId + "', NOW)");
   }
 
-  @Test public void completePendingTrace_chunkSize() throws Exception {
+  @Test public void completePendingTrace_maxTraces() throws Exception {
     int traceCount = 100;
     for (int i = 0; i < traceCount; i++) {
       String traceId = Long.toHexString(-(i + 1));
@@ -84,10 +84,10 @@ abstract class ITLinkCompleteTraces {
       markComplete(traceId);
     }
 
-    List<List<String>> partitionToTraceIds = callLinkCompleteTraces(chunkSize);
+    List<List<String>> partitionToTraceIds = callLinkCompleteTraces(maxTraces);
     // check each partition completed up to the requested chunk size of traces
     assertThat(partitionToTraceIds)
-        .allSatisfy(l -> assertThat(l).hasSize(chunkSize));
+        .allSatisfy(l -> assertThat(l).hasSize(maxTraces));
     int totalProcessed = partitionToTraceIds.stream().mapToInt(Collection::size).sum();
 
     assertThat(getStrings(
@@ -98,9 +98,9 @@ abstract class ITLinkCompleteTraces {
         .hasSize(traceCount - totalProcessed);
   }
 
-  List<List<String>> callLinkCompleteTraces(int chunkSize) throws Exception {
+  List<List<String>> callLinkCompleteTraces(int maxTraces) throws Exception {
     ClientResponseWithPartitionKey[] responses = client().callAllPartitionProcedure(
-        Schema.PROCEDURE_LINK_COMPLETE_TRACES, chunkSize);
+        Schema.PROCEDURE_LINK_COMPLETE_TRACES, maxTraces);
     List<List<String>> result = new ArrayList<>();
     for (ClientResponseWithPartitionKey response : responses) {
       result.add(getStrings(response.response));

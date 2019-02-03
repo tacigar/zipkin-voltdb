@@ -38,6 +38,11 @@ CREATE TABLE DependencyLink
 -- Allows procedures to work on a trace as a unit
 PARTITION TABLE DependencyLink ON COLUMN trace_id;
 
+CREATE PROCEDURE GetDependencyLinks AS
+  SELECT parent, child, SUM(call_count), SUM(error_count) from DependencyLink
+   WHERE ts BETWEEN TO_TIMESTAMP(Millis, ?) AND TO_TIMESTAMP(Millis, ?)
+   GROUP BY parent, child ORDER BY parent, child;
+
 -- Inserts into Span should imply an upsert here.
 -- After a quiet period, rows should be processed and upserted into CompleteTrace
 CREATE TABLE PendingTrace

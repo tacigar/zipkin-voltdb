@@ -14,6 +14,7 @@
 package zipkin2.storage.voltdb;
 
 import java.io.IOException;
+import java.util.List;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -25,6 +26,8 @@ import zipkin2.Span;
 import zipkin2.TestObjects;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static zipkin2.storage.voltdb.Schema.PROCEDURE_COMPLETE_PENDING_TRACES;
+import static zipkin2.storage.voltdb.Schema.PROCEDURE_LINK_COMPLETE_TRACES;
 
 @RunWith(Enclosed.class)
 public class ITVoltDBStorage {
@@ -77,6 +80,28 @@ public class ITVoltDBStorage {
     }
 
     @Override @Test @Ignore("TODO") public void getTraces_maxDuration() {
+    }
+  }
+
+  public static class ITDependencies extends zipkin2.storage.ITDependencies {
+    @ClassRule public static VoltDBStorageRule voltdb = classRule();
+
+    @Override protected VoltDBStorage storage() {
+      return voltdb.storage;
+    }
+
+    @Test @Ignore("TODO: assess if we want to support not strict trace ID")
+    public void getDependencies_strictTraceId() {
+    }
+
+    @Override protected void processDependencies(List<Span> spans) throws Exception {
+      super.processDependencies(spans);
+      storage().client.callAllPartitionProcedure(PROCEDURE_COMPLETE_PENDING_TRACES, 1000, 0, 0);
+      storage().client.callAllPartitionProcedure(PROCEDURE_LINK_COMPLETE_TRACES, 1000);
+    }
+
+    @Override public void clear() throws Exception {
+      voltdb.clear();
     }
   }
 

@@ -44,6 +44,7 @@ public final class Schema {
       PROCEDURE_GET_SERVICE_NAMES = GetServiceNames.class.getSimpleName(),
       PROCEDURE_GET_SPAN_NAMES = "GetSpanNames",
       PROCEDURE_GET_SPANS = GetSpansJson.class.getSimpleName(),
+      PROCEDURE_GET_DEPENDENCY_LINKS = "GetDependencyLinks",
       PROCEDURE_LINK_TRACE = LinkTrace.class.getSimpleName(),
       PROCEDURE_COMPLETE_PENDING_TRACES = CompletePendingTraces.class.getSimpleName(),
       PROCEDURE_LINK_COMPLETE_TRACES = LinkCompleteTraces.class.getSimpleName();

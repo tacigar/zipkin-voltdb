@@ -48,12 +48,13 @@ public class CompletePendingTraces extends VoltProcedure {
   final SQLStmt updateCompleteTrace = new SQLStmt( // unset the process timestamp
       "UPSERT INTO " + TABLE_COMPLETE_TRACE + " VALUES (?, NULL)");
 
-  public VoltTable run(String partitionValue, int chunkSize, long minAgeSeconds,
+  public VoltTable run(String partitionKey, int maxTraces, long minAgeSeconds,
       long maxAgeSeconds) {
-    if (minAgeSeconds <= 0) throw new VoltAbortException("minAgeSeconds must be > 0");
-    if (maxAgeSeconds <= 0) throw new VoltAbortException("maxAgeSeconds must be > 0");
+    if (maxTraces < 1) throw new VoltAbortException("maxTraces < 1");
+    if (minAgeSeconds < 0) throw new VoltAbortException("minAgeSeconds < 0");
+    if (maxAgeSeconds < minAgeSeconds) throw new VoltAbortException("maxAgeSeconds < minAgeSeconds");
 
-    voltQueueSQL(oldTraceIds, minAgeSeconds - 1, chunkSize);
+    voltQueueSQL(oldTraceIds, minAgeSeconds - 1, maxTraces);
     VoltTable oldTraceIdTable = voltExecuteSQL()[0];
 
     VoltTable result = new VoltTable(new VoltTable.ColumnInfo("trace_id", VoltType.STRING));

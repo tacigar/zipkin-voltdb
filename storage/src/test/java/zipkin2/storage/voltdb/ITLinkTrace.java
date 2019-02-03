@@ -52,8 +52,8 @@ abstract class ITLinkTrace {
   static void assertLinksTableConsistentWith(Client client, List<Span> trace) throws Exception {
     VoltTable table = executeAdHoc(client,
         "SELECT parent, child, call_count, error_count from DependencyLink").getResults()[0];
-    List<DependencyLink> links = toDependencyLinks(table);
-    assertThat(links).isEqualTo(new DependencyLinker().putTrace(trace).link());
+    assertThat(toDependencyLinks(table))
+        .containsExactlyInAnyOrderElementsOf(new DependencyLinker().putTrace(trace).link());
   }
 
   static List<DependencyLink> toDependencyLinks(VoltTable table) {

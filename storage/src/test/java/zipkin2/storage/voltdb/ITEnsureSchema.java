@@ -28,6 +28,7 @@ abstract class ITEnsureSchema {
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SPANS);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SERVICE_NAMES);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_SPAN_NAMES);
+    executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_DEPENDENCY_LINKS);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_LINK_TRACE);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_COMPLETE_PENDING_TRACES);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_LINK_COMPLETE_TRACES);
