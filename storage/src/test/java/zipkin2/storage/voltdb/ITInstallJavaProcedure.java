@@ -15,54 +15,33 @@ package zipkin2.storage.voltdb;
 
 import java.io.IOException;
 import org.junit.Test;
-import org.voltdb.client.ClientResponse;
 import org.voltdb.client.ProcCallException;
-import zipkin2.Span;
-import zipkin2.codec.SpanBytesDecoder;
 import zipkin2.storage.SpanStore;
 
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static zipkin2.TestObjects.CLIENT_SPAN;
+import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
+import static zipkin2.storage.voltdb.Schema.PROCEDURE_GET_SERVICE_NAMES;
+import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
 abstract class ITInstallJavaProcedure {
 
   abstract VoltDBStorage storage();
 
-  @Test public void getTrace_javaProcedure() throws Exception {
-    InstallJavaProcedure.installProcedure(storage().client, GetTrace.class,
-        "TABLE " + Schema.TABLE_SPAN + " COLUMN trace_id PARAMETER 0", false);
+  @Test public void installsProcedure() throws Exception {
+    executeAdHoc(storage().client, "Drop procedure " + PROCEDURE_GET_SERVICE_NAMES);
 
-    assertThat(store().getTrace(CLIENT_SPAN.traceId()).execute())
-        .isEmpty();
+    try {
+      store().getServiceNames().execute();
 
-    assertThat(callGetTrace(CLIENT_SPAN.traceId()).getResults())
-        .isEmpty();
-
-    accept(CLIENT_SPAN);
-
-    assertThat(store().getTrace(CLIENT_SPAN.traceId()).execute())
-        .containsExactly(CLIENT_SPAN);
-
-    assertThat(callGetTrace(CLIENT_SPAN.traceId()).getResults())
-        .hasSize(1)
-        .flatExtracting(t -> {
-          t.advanceRow();
-          return SpanBytesDecoder.JSON_V2.decodeList(t.getStringAsBytes(0));
-        })
-        .containsOnly(CLIENT_SPAN);
-  }
-
-  ClientResponse callGetTrace(String traceId) throws IOException, ProcCallException {
-    ClientResponse response = storage().client.callProcedure("GetTrace", traceId);
-    if (response.getStatus() != ClientResponse.SUCCESS) {
-      throw new RuntimeException("GetTrace resulted in " + response.getStatus());
+      failBecauseExceptionWasNotThrown(ProcCallException.class);
+    } catch (IOException e) {
+      assertThat(e).hasMessageContaining("Procedure GetServiceNames was not found");
     }
-    return response;
-  }
 
-  void accept(Span... spans) throws IOException {
-    storage().spanConsumer().accept(asList(spans)).execute();
+    new InstallJavaProcedure(storage().client, PROCEDURE_GET_SERVICE_NAMES).install();
+
+    assertThat(store().getServiceNames().execute())
+        .isEmpty(); // now we work again
   }
 
   SpanStore store() {

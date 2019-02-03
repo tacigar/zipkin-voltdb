@@ -27,10 +27,34 @@ import org.voltdb.client.ClientResponse;
 import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
 final class InstallJavaProcedure {
+  final Client client;
+  final String typeName;
+  String superTypeName;
+  String partition;
+  boolean addZipkin;
+
+  InstallJavaProcedure(Client client, String simpleTypeName) {
+    this.client = client;
+    this.typeName = "zipkin2.storage.voltdb.procedure." + simpleTypeName;
+  }
+
+  InstallJavaProcedure withSuperType(String simpleSuperTypeName) {
+    this.superTypeName = "zipkin2.storage.voltdb.procedure." + simpleSuperTypeName;
+    return this;
+  }
+
+  InstallJavaProcedure withPartition(String partition) {
+    this.partition = partition;
+    return this;
+  }
+
+  InstallJavaProcedure addZipkin() {
+    this.addZipkin = true;
+    return this;
+  }
 
   /** This installs a procedure that has no dependencies apart from VoltDB */
-  static void installProcedure(Client client, Class<?> type, String partition, boolean addZipkin)
-      throws Exception {
+  void install() throws Exception {
     ByteArrayOutputStream bout = new ByteArrayOutputStream();
     JarOutputStream jarOut = new JarOutputStream(bout);
 
@@ -48,7 +72,7 @@ final class InstallJavaProcedure {
     // Jar format requires that you have an entry for each part of a directory path.
     // For example, to put a class under zipkin2/storage/voltdb, you need the path entries:
     // zipkin2/, zipkin2/storage/ and zipkin2/storage/voltdb/
-    String[] paths = type.getName().substring(0, type.getName().lastIndexOf('.')).split("\\.");
+    String[] paths = typeName.substring(0, typeName.lastIndexOf('.')).split("\\.");
     StringBuilder currentDir = new StringBuilder();
     for (int i = addZipkin ? /* skip zipkin/storage/ */ 2 : 0; i < paths.length; i++) {
       currentDir.append(paths[i]).append('/');
@@ -57,27 +81,27 @@ final class InstallJavaProcedure {
     }
 
     // Allow subclassing in the same package
-    for (Class<?> toAdd = type; toAdd.getPackage().equals(type.getPackage());
-        toAdd = toAdd.getSuperclass()) {
-      addClass(toAdd, jarOut);
+    if (superTypeName != null) {
+      addClass(superTypeName, jarOut);
     }
+    addClass(typeName, jarOut);
     jarOut.close();
 
     ClientResponse response =
         client.callProcedure("@UpdateClasses", bout.toByteArray(), null);
     if (response.getStatus() != ClientResponse.SUCCESS) {
       throw new RuntimeException(
-          "@UpdateClasses for " + type.getName() + " resulted in " + response.getStatus());
+          "@UpdateClasses for " + typeName + " resulted in " + response.getStatus());
     }
     executeAdHoc(client, "CREATE PROCEDURE " + (partition != null ?
-        (" PARTITION ON " + partition) : "") + " FROM CLASS " + type.getName() + ";");
+        (" PARTITION ON " + partition) : "") + " FROM CLASS " + typeName + ";");
   }
 
   /** Adds the path of the class itself, followed by the bytecode of the class */
-  static void addClass(Class<?> type, JarOutputStream out) throws IOException {
-    String path = type.getName().replace('.', '/') + ".class";
+  void addClass(String typeName, JarOutputStream out) throws IOException {
+    String path = typeName.replace('.', '/') + ".class";
     out.putNextEntry(new ZipEntry(path));
-    ClassLoader classLoader = type.getClassLoader();
+    ClassLoader classLoader = getClass().getClassLoader();
     if (classLoader == null) classLoader = ClassLoader.getSystemClassLoader();
     try (InputStream classBytes = classLoader.getResourceAsStream(path)) {
       copy(classBytes, out); // this copies the bytecode of the type we want into the jar
