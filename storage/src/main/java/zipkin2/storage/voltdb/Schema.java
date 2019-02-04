@@ -24,7 +24,7 @@ import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 public final class Schema {
   static final Logger LOG = Logger.getLogger(Schema.class.getName());
   static final String SCHEMA_RESOURCE = "/ddl.sql";
-  static final String
+  public static final String
       TABLE_SPAN = "Span",
       TABLE_PENDING_TRACE = "PendingTrace",
       TABLE_COMPLETE_TRACE = "CompleteTrace",

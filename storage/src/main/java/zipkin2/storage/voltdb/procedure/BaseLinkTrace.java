@@ -34,7 +34,7 @@ abstract class BaseLinkTrace extends VoltProcedure {
       "SELECT parent_id, id, kind, service_name, remote_service_name, is_error from "
           + TABLE_SPAN + " where trace_id = ?");
   final SQLStmt insertDependencyLink = new SQLStmt(
-      "INSERT INTO " + TABLE_DEPENDENCY_LINK
+      "UPSERT INTO " + TABLE_DEPENDENCY_LINK
           + " (trace_id, ts, parent, child, call_count, error_count)"
           + " VALUES"
           + " (?, TO_TIMESTAMP(Micros, ?), ?, ?, ?, ?)");
