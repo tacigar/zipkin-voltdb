@@ -31,7 +31,7 @@ import static zipkin2.storage.voltdb.Schema.TABLE_COMPLETE_TRACE;
 import static zipkin2.storage.voltdb.Schema.TABLE_DEPENDENCY_LINK;
 import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
-abstract class ITLinkCompleteTraces {
+abstract class ITProcessCompleteTraces {
   int maxTraces = 5;
 
   abstract VoltDBStorage storage();
@@ -52,7 +52,7 @@ abstract class ITLinkCompleteTraces {
 
   void markComplete(String traceId) throws Exception {
     executeAdHoc(client(), "UPSERT INTO " + TABLE_COMPLETE_TRACE
-        + " VALUES ('" + traceId + "', NULL)");
+        + " VALUES ('" + traceId + "', 1, 1)");
   }
 
   @Test public void ignoresProcessedTrace() throws Exception {
@@ -71,7 +71,7 @@ abstract class ITLinkCompleteTraces {
 
   void markProcessed(String traceId) throws Exception {
     executeAdHoc(client(), "UPSERT INTO " + TABLE_COMPLETE_TRACE
-        + " VALUES ('" + traceId + "', NOW)");
+        + " VALUES ('" + traceId + "', 0, 1)");
   }
 
   @Test public void completePendingTrace_maxTraces() throws Exception {
@@ -94,13 +94,13 @@ abstract class ITLinkCompleteTraces {
         executeAdHoc(client(), "SELECT DISTINCT trace_id from " + TABLE_DEPENDENCY_LINK)))
         .hasSize(totalProcessed);
     assertThat(getStrings(executeAdHoc(client(), "SELECT trace_id from " + TABLE_COMPLETE_TRACE
-        + " WHERE process_ts IS NULL")))
+        + " WHERE dirty = 1")))
         .hasSize(traceCount - totalProcessed);
   }
 
   List<List<String>> callLinkCompleteTraces(int maxTraces) throws Exception {
     ClientResponseWithPartitionKey[] responses = client().callAllPartitionProcedure(
-        Schema.PROCEDURE_LINK_COMPLETE_TRACES, maxTraces);
+        Schema.PROCEDURE_PROCESS_COMPLETE_TRACES, maxTraces);
     List<List<String>> result = new ArrayList<>();
     for (ClientResponseWithPartitionKey response : responses) {
       result.add(getStrings(response.response));

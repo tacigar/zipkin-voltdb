@@ -29,7 +29,7 @@ $ STORAGE_TYPE=voltdb \
     -Dloader.path='voltdb.jar,voltdb.jar!/lib' \
     -Dspring.profiles.active=voltdb \
     -cp zipkin.jar \
-    org.springframework.boot.loader.PropertiesLauncher --zipkin.ui.source-root=classpath:zipkin-lens
+    org.springframework.boot.loader.PropertiesLauncher
 ```
 
 After executing these steps, applications can send spans

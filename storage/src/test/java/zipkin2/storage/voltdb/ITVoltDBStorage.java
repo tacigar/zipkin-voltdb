@@ -27,7 +27,7 @@ import zipkin2.TestObjects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static zipkin2.storage.voltdb.Schema.PROCEDURE_COMPLETE_PENDING_TRACES;
-import static zipkin2.storage.voltdb.Schema.PROCEDURE_LINK_COMPLETE_TRACES;
+import static zipkin2.storage.voltdb.Schema.PROCEDURE_PROCESS_COMPLETE_TRACES;
 
 @RunWith(Enclosed.class)
 public class ITVoltDBStorage {
@@ -97,7 +97,7 @@ public class ITVoltDBStorage {
     @Override protected void processDependencies(List<Span> spans) throws Exception {
       super.processDependencies(spans);
       storage().client.callAllPartitionProcedure(PROCEDURE_COMPLETE_PENDING_TRACES, 1000, 0, 0);
-      storage().client.callAllPartitionProcedure(PROCEDURE_LINK_COMPLETE_TRACES, 1000);
+      storage().client.callAllPartitionProcedure(PROCEDURE_PROCESS_COMPLETE_TRACES, 1000);
     }
 
     @Override public void clear() throws Exception {
@@ -150,8 +150,8 @@ public class ITVoltDBStorage {
     }
   }
 
-  public static class ITLinkCompleteTraces
-      extends zipkin2.storage.voltdb.ITLinkCompleteTraces {
+  public static class ITProcessCompleteTraces
+      extends zipkin2.storage.voltdb.ITProcessCompleteTraces {
     @ClassRule public static VoltDBStorageRule voltdb = classRule();
 
     @Override VoltDBStorage storage() {

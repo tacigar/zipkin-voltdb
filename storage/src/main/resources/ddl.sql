@@ -44,7 +44,7 @@ CREATE PROCEDURE GetDependencyLinks AS
    GROUP BY parent, child ORDER BY parent, child;
 
 -- Inserts into Span should imply an upsert here.
--- After a quiet period, rows should be processed and upserted into CompleteTrace
+-- After a quiet period, rows should be removed and upserted into CompleteTrace
 CREATE TABLE PendingTrace
 (
   trace_id VARCHAR(32) NOT NULL,
@@ -54,12 +54,24 @@ CREATE TABLE PendingTrace
 
 PARTITION TABLE PendingTrace ON COLUMN trace_id;
 
--- processing is decoupled, might imply exporting to multiple places
+-- When a trace has an update, it should be processed and its dirty bit set to zero
+-- Sampled traces should be upserted into PendingExport
 CREATE TABLE CompleteTrace
 (
   trace_id VARCHAR(32) NOT NULL,
-  process_ts TIMESTAMP, -- unset when we need to re-process a trace ID
+  dirty TINYINT NOT NULL, -- 1 if there was an update to this trace, set to 0 once processed
+  is_sampled TINYINT NOT NULL, -- 1 if sampled, 0 if not
   PRIMARY KEY (trace_id)
 );
 
 PARTITION TABLE CompleteTrace ON COLUMN trace_id;
+
+-- Once exported, rows should be removed. Rows may be re-added on late updates to a trace.
+CREATE TABLE PendingExport
+(
+  trace_id VARCHAR(32) NOT NULL,
+  update_ts TIMESTAMP NOT NULL,
+  PRIMARY KEY (trace_id)
+);
+
+PARTITION TABLE PendingExport ON COLUMN trace_id;

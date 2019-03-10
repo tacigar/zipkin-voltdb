@@ -25,7 +25,7 @@ import zipkin2.internal.Nullable;
 import zipkin2.storage.voltdb.VoltDBStorage;
 
 import static zipkin2.storage.voltdb.Schema.PROCEDURE_COMPLETE_PENDING_TRACES;
-import static zipkin2.storage.voltdb.Schema.PROCEDURE_LINK_COMPLETE_TRACES;
+import static zipkin2.storage.voltdb.Schema.PROCEDURE_PROCESS_COMPLETE_TRACES;
 
 final class VoltDBScheduledTasks {
   final Logger logger = Logger.getLogger(VoltDBScheduledTasks.class.getName());
@@ -47,12 +47,12 @@ final class VoltDBScheduledTasks {
   }
 
   @Scheduled(fixedRate = 250) // 4 times a second * maxPerPartition * partition count
-  public void linkCompleteTraces() throws Exception {
+  public void processCompleteTraces() throws Exception {
     Client client = tryClient();
     if (client == null) return;
 
-    client.callAllPartitionProcedure(new LoggingCallback(PROCEDURE_LINK_COMPLETE_TRACES),
-        PROCEDURE_LINK_COMPLETE_TRACES, maxPerPartition);
+    client.callAllPartitionProcedure(new LoggingCallback(PROCEDURE_PROCESS_COMPLETE_TRACES),
+        PROCEDURE_PROCESS_COMPLETE_TRACES, maxPerPartition);
   }
 
   // the client might fail for reasons such as not started yet or shutting down.

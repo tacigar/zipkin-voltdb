@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.List;
 import org.junit.Test;
 import org.voltdb.VoltTable;
+import org.voltdb.VoltType;
 import org.voltdb.client.ClientResponse;
 import org.voltdb.client.ClientResponseWithPartitionKey;
 import org.voltdb.client.ProcCallException;
@@ -112,7 +113,7 @@ abstract class ITCompletePendingTraces {
     expectCompletePendingTraces(root.traceId());
   }
 
-  @Test public void resetsProcessingTimeOnLateUpdate() throws Exception {
+  @Test public void resetsDirtyBitOnLateSpans() throws Exception {
     Span root = Span.newBuilder().traceId("a").id("a").timestamp(TODAY).duration(10L).build();
     List<Span> spans = asList(
         root,
@@ -125,9 +126,6 @@ abstract class ITCompletePendingTraces {
 
     expectCompletePendingTraces(root.traceId());
 
-    executeAdHoc(storage().client, "UPDATE " + TABLE_COMPLETE_TRACE
-        + " SET process_ts = NOW");
-
     // report a late span
     storage().spanConsumer()
         .accept(asList(root.toBuilder().parentId("d").id("e").build()))
@@ -137,12 +135,11 @@ abstract class ITCompletePendingTraces {
 
     expectCompletePendingTraces(root.traceId());
 
-    // unset processing flag alerts we should look again
+    // dirty bit alerts we should look again
     VoltTable table = executeAdHoc(storage().client,
-        "SELECT process_ts FROM " + TABLE_COMPLETE_TRACE).getResults()[0];
+        "SELECT dirty FROM " + TABLE_COMPLETE_TRACE).getResults()[0];
     assertThat(table.advanceRow()).isTrue();
-    table.getTimestampAsLong(0);
-    assertThat(table.wasNull()).isTrue();
+    assertThat(table.get(0, VoltType.TINYINT)).isEqualTo((byte) 1);
   }
 
   @Test public void doesntCompleteUntilOrphanIsReported() throws Exception {

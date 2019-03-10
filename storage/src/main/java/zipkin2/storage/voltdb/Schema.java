@@ -28,6 +28,7 @@ public final class Schema {
       TABLE_SPAN = "Span",
       TABLE_PENDING_TRACE = "PendingTrace",
       TABLE_COMPLETE_TRACE = "CompleteTrace",
+      TABLE_PENDING_EXPORT = "PendingExport",
       TABLE_DEPENDENCY_LINK = "DependencyLink",
       PROCEDURE_STORE_SPAN = "StoreSpansJson",
       PROCEDURE_GET_SPAN = "GetSpanJson",
@@ -37,7 +38,7 @@ public final class Schema {
       PROCEDURE_GET_DEPENDENCY_LINKS = "GetDependencyLinks",
       PROCEDURE_LINK_TRACE = "LinkTrace",
       PROCEDURE_COMPLETE_PENDING_TRACES = "CompletePendingTraces",
-      PROCEDURE_LINK_COMPLETE_TRACES = "LinkCompleteTraces";
+      PROCEDURE_PROCESS_COMPLETE_TRACES = "ProcessCompleteTraces";
 
   static void ensureExists(Client client, String host) {
     try {
@@ -57,15 +58,17 @@ public final class Schema {
               .install();
           new InstallJavaProcedure(client, PROCEDURE_LINK_TRACE)
               .withPartition("TABLE " + Schema.TABLE_DEPENDENCY_LINK + " COLUMN trace_id")
-              .withSuperType("BaseLinkTrace")
+              .withAdditionalClass("BaseLinkTrace")
               .addZipkin()
               .install();
           new InstallJavaProcedure(client, PROCEDURE_COMPLETE_PENDING_TRACES)
               .withPartition("TABLE " + Schema.TABLE_PENDING_TRACE + " COLUMN trace_id")
+              .withAdditionalClass("BaseLinkTrace")
+              .withAdditionalClass("CountingSampler")
               .install();
-          new InstallJavaProcedure(client, PROCEDURE_LINK_COMPLETE_TRACES)
+          new InstallJavaProcedure(client, PROCEDURE_PROCESS_COMPLETE_TRACES)
               .withPartition("TABLE " + Schema.TABLE_COMPLETE_TRACE + " COLUMN trace_id")
-              .withSuperType("BaseLinkTrace")
+              .withAdditionalClass("BaseLinkTrace")
               .addZipkin()
               .install();
         } catch (Exception e1) {

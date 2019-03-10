@@ -17,6 +17,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
@@ -29,7 +31,7 @@ import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 final class InstallJavaProcedure {
   final Client client;
   final String typeName;
-  String superTypeName;
+  List<String> additionalClasses = new ArrayList();
   String partition;
   boolean addZipkin;
 
@@ -38,8 +40,8 @@ final class InstallJavaProcedure {
     this.typeName = "zipkin2.storage.voltdb.procedure." + simpleTypeName;
   }
 
-  InstallJavaProcedure withSuperType(String simpleSuperTypeName) {
-    this.superTypeName = "zipkin2.storage.voltdb.procedure." + simpleSuperTypeName;
+  InstallJavaProcedure withAdditionalClass(String simpleName) {
+    additionalClasses.add("zipkin2.storage.voltdb.procedure." + simpleName);
     return this;
   }
 
@@ -81,8 +83,8 @@ final class InstallJavaProcedure {
     }
 
     // Allow subclassing in the same package
-    if (superTypeName != null) {
-      addClass(superTypeName, jarOut);
+    for (String additionalClass : additionalClasses) {
+      addClass(additionalClass, jarOut);
     }
     addClass(typeName, jarOut);
     jarOut.close();

@@ -31,10 +31,11 @@ abstract class ITEnsureSchema {
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_GET_DEPENDENCY_LINKS);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_LINK_TRACE);
     executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_COMPLETE_PENDING_TRACES);
-    executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_LINK_COMPLETE_TRACES);
+    executeAdHoc(client(), "Drop procedure " + Schema.PROCEDURE_PROCESS_COMPLETE_TRACES);
     executeAdHoc(client(), "Drop table " + Schema.TABLE_SPAN);
     executeAdHoc(client(), "Drop table " + Schema.TABLE_DEPENDENCY_LINK);
     executeAdHoc(client(), "Drop table " + Schema.TABLE_PENDING_TRACE);
+    executeAdHoc(client(), "Drop table " + Schema.TABLE_PENDING_EXPORT);
     executeAdHoc(client(), "Drop table " + Schema.TABLE_COMPLETE_TRACE);
 
     Schema.ensureExists(client(), "localhost");

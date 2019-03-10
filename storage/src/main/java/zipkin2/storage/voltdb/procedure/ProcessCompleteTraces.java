@@ -13,40 +13,51 @@
  */
 package zipkin2.storage.voltdb.procedure;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.voltdb.SQLStmt;
 import org.voltdb.VoltTable;
 import org.voltdb.VoltType;
 
 import static zipkin2.storage.voltdb.Schema.TABLE_COMPLETE_TRACE;
+import static zipkin2.storage.voltdb.Schema.TABLE_PENDING_EXPORT;
+import static zipkin2.storage.voltdb.Schema.TABLE_PENDING_TRACE;
 
-public class LinkCompleteTraces extends BaseLinkTrace {
-  final SQLStmt pendingTraceIds = new SQLStmt(
-      "SELECT trace_id from "
+public class ProcessCompleteTraces extends BaseLinkTrace {
+  static final Byte ONE = 1;
+
+  final SQLStmt tracesToProcess = new SQLStmt(
+      "SELECT trace_id, is_sampled from "
           + TABLE_COMPLETE_TRACE
-          + " WHERE process_ts IS NULL ORDER BY trace_id LIMIT ?");
+          + " WHERE dirty = 1 ORDER BY trace_id LIMIT ?");
 
-  final SQLStmt updateCompleteTrace =
-      new SQLStmt("UPDATE " + TABLE_COMPLETE_TRACE + " SET process_ts = NOW WHERE trace_id = ?");
+  final SQLStmt markProcessed = new SQLStmt(
+      "UPDATE " + TABLE_COMPLETE_TRACE + " SET is_sampled = ?, dirty = 0 WHERE trace_id = ?");
+
+  final SQLStmt updatePendingExport = new SQLStmt(
+      "UPSERT INTO " + TABLE_PENDING_EXPORT + " VALUES (?, NOW())");
 
   public VoltTable run(String partitionKey, int maxTraces) {
     if (maxTraces < 1) throw new VoltAbortException("maxTraces < 1");
 
-    voltQueueSQL(pendingTraceIds, maxTraces);
+    voltQueueSQL(tracesToProcess, maxTraces);
     VoltTable pendingTraceIdTable = voltExecuteSQL()[0];
 
     VoltTable result = new VoltTable(new VoltTable.ColumnInfo("trace_id", VoltType.STRING));
     if (pendingTraceIdTable.getRowCount() == 0) return result; // no rows
 
-    List<String> traceIds = new ArrayList<>();
     while (pendingTraceIdTable.advanceRow()) {
-      traceIds.add(pendingTraceIdTable.getString(0));
-    }
+      String trace_id = pendingTraceIdTable.getString(0);
 
-    for (String trace_id : traceIds) {
+      // if this is a sampled trace, we should add it to the export table.
+      Byte sampled_byte = (Byte) pendingTraceIdTable.get(1, VoltType.TINYINT);
+      if (ONE.equals(sampled_byte)) {
+        voltQueueSQL(updatePendingExport, trace_id);
+        voltExecuteSQL(false);
+      }
+
+      // regardless of sampling, we should process or re-process dependency links
       linkTrace(trace_id, false);
-      voltQueueSQL(updateCompleteTrace, EXPECT_SCALAR_MATCH(1), trace_id);
+      voltQueueSQL(markProcessed, EXPECT_SCALAR_MATCH(1), sampled_byte, trace_id);
+
       voltExecuteSQL(false);
       result.addRow(trace_id);
     }
