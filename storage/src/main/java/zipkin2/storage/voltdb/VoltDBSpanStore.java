@@ -148,7 +148,9 @@ final class VoltDBSpanStore implements SpanStore {
   }
 
   @Override public Call<List<DependencyLink>> getDependencies(long endTs, long lookback) {
-    if (!searchEnabled) return Call.emptyList();
+    if (endTs <= 0) throw new IllegalArgumentException("endTs <= 0");
+    if (lookback <= 0) throw new IllegalArgumentException("lookback <= 0");
+
     return new GetDependencyLinksCall(client, endTs, lookback);
   }
 

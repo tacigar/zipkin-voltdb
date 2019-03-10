@@ -34,7 +34,7 @@ public class ITVoltDBStorage {
 
   /** Written intentionally to allow you to run a single nested method via the CLI. See README */
   static VoltDBStorageRule classRule() {
-    return new VoltDBStorageRule("voltdb/voltdb-community:8.4");
+    return new VoltDBStorageRule("voltdb/voltdb-community:8.4.1");
   }
 
   public static class ITSpanStore extends zipkin2.storage.ITSpanStore {

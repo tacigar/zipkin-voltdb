@@ -36,14 +36,14 @@
     <dependency>
       <groupId>org.voltdb</groupId>
       <artifactId>voltdbclient</artifactId>
-      <version>8.4</version>
+      <version>8.4.1</version>
     </dependency>
 
     <!-- to compile VoltProcedure -->
     <dependency>
       <groupId>org.voltdb</groupId>
       <artifactId>voltdb</artifactId>
-      <version>8.4</version>
+      <version>8.4.1</version>
       <scope>provided</scope>
     </dependency>
 
