@@ -19,18 +19,17 @@ import org.voltdb.VoltType;
 
 import static zipkin2.storage.voltdb.Schema.TABLE_COMPLETE_TRACE;
 import static zipkin2.storage.voltdb.Schema.TABLE_PENDING_EXPORT;
-import static zipkin2.storage.voltdb.Schema.TABLE_PENDING_TRACE;
 
 public class ProcessCompleteTraces extends BaseLinkTrace {
   static final Byte ONE = 1;
 
   final SQLStmt tracesToProcess = new SQLStmt(
-      "SELECT trace_id, is_sampled from "
+      "SELECT trace_id, should_export from "
           + TABLE_COMPLETE_TRACE
-          + " WHERE dirty = 1 ORDER BY trace_id LIMIT ?");
+          + " WHERE is_dirty = 1 ORDER BY trace_id LIMIT ?");
 
   final SQLStmt markProcessed = new SQLStmt(
-      "UPDATE " + TABLE_COMPLETE_TRACE + " SET is_sampled = ?, dirty = 0 WHERE trace_id = ?");
+      "UPDATE " + TABLE_COMPLETE_TRACE + " SET should_export = ?, is_dirty = 0 WHERE trace_id = ?");
 
   final SQLStmt updatePendingExport = new SQLStmt(
       "UPSERT INTO " + TABLE_PENDING_EXPORT + " VALUES (?, NOW())");
@@ -47,18 +46,19 @@ public class ProcessCompleteTraces extends BaseLinkTrace {
     while (pendingTraceIdTable.advanceRow()) {
       String trace_id = pendingTraceIdTable.getString(0);
 
-      // if this is a sampled trace, we should add it to the export table.
-      Byte sampled_byte = (Byte) pendingTraceIdTable.get(1, VoltType.TINYINT);
-      if (ONE.equals(sampled_byte)) {
+      // Signal via the pending export table, if a decision to export happened
+      Byte should_export = (Byte) pendingTraceIdTable.get(1, VoltType.TINYINT);
+      if (ONE.equals(should_export)) {
         voltQueueSQL(updatePendingExport, trace_id);
         voltExecuteSQL(false);
       }
 
-      // regardless of sampling, we should process or re-process dependency links
+      // Regardless of export decision, we should process or re-process dependency links
       linkTrace(trace_id, false);
-      voltQueueSQL(markProcessed, EXPECT_SCALAR_MATCH(1), sampled_byte, trace_id);
-
+      voltQueueSQL(markProcessed, EXPECT_SCALAR_MATCH(1), should_export, trace_id);
       voltExecuteSQL(false);
+
+      // The response includes processed trace IDs, regardless of export decision
       result.addRow(trace_id);
     }
 

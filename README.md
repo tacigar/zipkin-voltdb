@@ -25,12 +25,13 @@ We can [use VoltDB export tables](https://github.com/adriancole/zipkin-voltdb/pu
 stream data to other systems regardless of whether it is individual spans, metrics derived from them
 or complete traces. This would support use cases like shipping data to sinks that need 100% data like [Haystack Trends](https://github.com/ExpediaDotCom/haystack-trends).
 
-### Downsampling (Not yet implemented)
+### Downsampling (Partially implemented)
 A lot of storage problems are overload in nature. VoltDB is in-memory, but includes TTL of both time and also
-row count. Our first experiment of dependency linking in near real time proves we can get to a "done" trace.
-Using further analysis and export tables, we should be able to choose to drop a trace, or even trim it, based
-on after-the-fact information such as errors. Thus, a lower volume of refined traces can be conditionally
-exported elsewhere.
+row count. Our schema includes an "export table" which contains trace IDs that should be sent downstream for
+long term storage. The first implementation of export sampling is probabilistic though more sophisticated
+mechanisms can be made.
+
+Regardless of export or not, service graph dependency linking happens when a trace is considered "done".
 
 ## Quick Start
 Make sure you have [VoltDB](https://www.voltdb.com/try-voltdb/open-source-edition/) and it is running.

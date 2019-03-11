@@ -26,9 +26,11 @@ import zipkin2.Span;
 import static org.assertj.core.api.Assertions.assertThat;
 import static zipkin2.TestObjects.TRACE;
 import static zipkin2.storage.voltdb.ITCompletePendingTraces.getStrings;
+import static zipkin2.storage.voltdb.ITCompletePendingTraces.getTraceIds;
 import static zipkin2.storage.voltdb.ITLinkTrace.assertLinksTableConsistentWith;
 import static zipkin2.storage.voltdb.Schema.TABLE_COMPLETE_TRACE;
 import static zipkin2.storage.voltdb.Schema.TABLE_DEPENDENCY_LINK;
+import static zipkin2.storage.voltdb.Schema.TABLE_PENDING_EXPORT;
 import static zipkin2.storage.voltdb.VoltDBStorage.executeAdHoc;
 
 abstract class ITProcessCompleteTraces {
@@ -36,23 +38,43 @@ abstract class ITProcessCompleteTraces {
 
   abstract VoltDBStorage storage();
 
-  @Test public void linksCompleteTrace() throws Exception {
+  @Test public void processesCompleteTrace_doesNotExportUnsampledTrace() throws Exception {
     String traceId = TRACE.get(0).traceId();
 
     storage().spanConsumer().accept(TRACE).execute();
 
-    markComplete(traceId);
+    markComplete(traceId, false);
 
-    assertThat(callLinkCompleteTraces(maxTraces))
+    assertThat(callProcessCompleteTraces(maxTraces))
         .flatExtracting(l -> l)
         .containsExactly(traceId);
 
+    // We don't add to the pending export table when not sampled for export.
+    assertThat(getTraceIds(storage(), TABLE_PENDING_EXPORT)).isEmpty();
+    // Dependency links are derived even when unsampled
     assertLinksTableConsistentWith(storage().client, TRACE);
   }
 
-  void markComplete(String traceId) throws Exception {
-    executeAdHoc(client(), "UPSERT INTO " + TABLE_COMPLETE_TRACE
-        + " VALUES ('" + traceId + "', 1, 1)");
+  @Test public void processesCompleteTrace_updatesPendingExportWhenSampled() throws Exception {
+    String traceId = TRACE.get(0).traceId();
+
+    storage().spanConsumer().accept(TRACE).execute();
+
+    markComplete(traceId, true);
+
+    assertThat(callProcessCompleteTraces(maxTraces))
+        .flatExtracting(l -> l)
+        .containsExactly(traceId);
+
+    assertThat(getTraceIds(storage(), TABLE_PENDING_EXPORT)).containsExactly(traceId);
+    assertLinksTableConsistentWith(storage().client, TRACE);
+  }
+
+  /** The complete trace table holds trace IDs and if they have been sampled or processed. */
+  void markComplete(String traceId, boolean sampled) throws Exception {
+    executeAdHoc(client(), String.format(
+        "UPSERT INTO %s VALUES ('%s', %s, %s)", TABLE_COMPLETE_TRACE, traceId, 1 /* dirty */,
+        sampled ? 1 : 0));
   }
 
   @Test public void ignoresProcessedTrace() throws Exception {
@@ -62,7 +84,7 @@ abstract class ITProcessCompleteTraces {
 
     markProcessed(traceId);
 
-    assertThat(callLinkCompleteTraces(maxTraces))
+    assertThat(callProcessCompleteTraces(maxTraces))
         .flatExtracting(l -> l)
         .isEmpty();
 
@@ -81,10 +103,10 @@ abstract class ITProcessCompleteTraces {
       List<Span> trace = TRACE.stream().map(s -> s.toBuilder().traceId(traceId).build())
           .collect(Collectors.toList());
       storage().spanConsumer().accept(trace).execute();
-      markComplete(traceId);
+      markComplete(traceId, true);
     }
 
-    List<List<String>> partitionToTraceIds = callLinkCompleteTraces(maxTraces);
+    List<List<String>> partitionToTraceIds = callProcessCompleteTraces(maxTraces);
     // check each partition completed up to the requested chunk size of traces
     assertThat(partitionToTraceIds)
         .allSatisfy(l -> assertThat(l).hasSize(maxTraces));
@@ -94,11 +116,11 @@ abstract class ITProcessCompleteTraces {
         executeAdHoc(client(), "SELECT DISTINCT trace_id from " + TABLE_DEPENDENCY_LINK)))
         .hasSize(totalProcessed);
     assertThat(getStrings(executeAdHoc(client(), "SELECT trace_id from " + TABLE_COMPLETE_TRACE
-        + " WHERE dirty = 1")))
+        + " WHERE is_dirty = 1")))
         .hasSize(traceCount - totalProcessed);
   }
 
-  List<List<String>> callLinkCompleteTraces(int maxTraces) throws Exception {
+  List<List<String>> callProcessCompleteTraces(int maxTraces) throws Exception {
     ClientResponseWithPartitionKey[] responses = client().callAllPartitionProcedure(
         Schema.PROCEDURE_PROCESS_COMPLETE_TRACES, maxTraces);
     List<List<String>> result = new ArrayList<>();

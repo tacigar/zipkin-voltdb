@@ -137,7 +137,7 @@ abstract class ITCompletePendingTraces {
 
     // dirty bit alerts we should look again
     VoltTable table = executeAdHoc(storage().client,
-        "SELECT dirty FROM " + TABLE_COMPLETE_TRACE).getResults()[0];
+        "SELECT is_dirty FROM " + TABLE_COMPLETE_TRACE).getResults()[0];
     assertThat(table.advanceRow()).isTrue();
     assertThat(table.get(0, VoltType.TINYINT)).isEqualTo((byte) 1);
   }
@@ -176,8 +176,8 @@ abstract class ITCompletePendingTraces {
         .allSatisfy(l -> assertThat(l).hasSize(maxTraces));
     int totalProcessed = partitionToTraceIds.stream().mapToInt(Collection::size).sum();
 
-    assertThat(getTraceIds(TABLE_PENDING_TRACE)).hasSize(traceCount - totalProcessed);
-    assertThat(getTraceIds(TABLE_COMPLETE_TRACE)).hasSize(totalProcessed);
+    assertThat(getTraceIds(storage(), TABLE_PENDING_TRACE)).hasSize(traceCount - totalProcessed);
+    assertThat(getTraceIds(storage(), TABLE_COMPLETE_TRACE)).hasSize(totalProcessed);
   }
 
   void agePendingTraces(int seconds) throws IOException, ProcCallException {
@@ -191,8 +191,8 @@ abstract class ITCompletePendingTraces {
         .flatExtracting(l -> l)
         .containsExactly(traceId);
 
-    assertThat(getTraceIds(TABLE_PENDING_TRACE)).isEmpty();
-    assertThat(getTraceIds(TABLE_COMPLETE_TRACE)).containsExactly(traceId);
+    assertThat(getTraceIds(storage(), TABLE_PENDING_TRACE)).isEmpty();
+    assertThat(getTraceIds(storage(), TABLE_COMPLETE_TRACE)).containsExactly(traceId);
   }
 
   void expectNoopOnCompletePendingTraces(String traceId) throws Exception {
@@ -200,8 +200,8 @@ abstract class ITCompletePendingTraces {
         .flatExtracting(l -> l)
         .isEmpty();
 
-    assertThat(getTraceIds(TABLE_PENDING_TRACE)).containsExactly(traceId);
-    assertThat(getTraceIds(TABLE_COMPLETE_TRACE)).isEmpty();
+    assertThat(getTraceIds(storage(), TABLE_PENDING_TRACE)).containsExactly(traceId);
+    assertThat(getTraceIds(storage(), TABLE_COMPLETE_TRACE)).isEmpty();
   }
 
   List<List<String>> completePendingTraces(int maxTraces, long minAgeSeconds, long maxAgeSeconds)
@@ -215,8 +215,8 @@ abstract class ITCompletePendingTraces {
     return result;
   }
 
-  List<String> getTraceIds(String table) throws Exception {
-    return getStrings(executeAdHoc(storage().client, "SELECT trace_id from " + table));
+  static List<String> getTraceIds(VoltDBStorage storage, String table) throws Exception {
+    return getStrings(executeAdHoc(storage.client, "SELECT trace_id from " + table));
   }
 
   static List<String> getStrings(ClientResponse response) {

@@ -59,8 +59,8 @@ PARTITION TABLE PendingTrace ON COLUMN trace_id;
 CREATE TABLE CompleteTrace
 (
   trace_id VARCHAR(32) NOT NULL,
-  dirty TINYINT NOT NULL, -- 1 if there was an update to this trace, set to 0 once processed
-  is_sampled TINYINT NOT NULL, -- 1 if sampled, 0 if not
+  is_dirty TINYINT NOT NULL, -- 1 if there was an update to this trace, set to 0 once processed
+  should_export TINYINT NOT NULL, -- 1 if sampled for export, 0 if not
   PRIMARY KEY (trace_id)
 );
 

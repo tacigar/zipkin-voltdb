@@ -47,14 +47,14 @@ public class CompletePendingTraces extends VoltProcedure {
       "SELECT MAX(parent_id), id, MIN(ts), MIN(duration) FROM " + TABLE_SPAN + " WHERE trace_id = ?"
           + " GROUP BY id");
 
-  final SQLStmt selectSampledStatus = new SQLStmt(
-      "SELECT trace_id, is_sampled from " + TABLE_COMPLETE_TRACE + " WHERE trace_id in ?");
+  final SQLStmt selectExportStatus = new SQLStmt(
+      "SELECT trace_id, should_export from " + TABLE_COMPLETE_TRACE + " WHERE trace_id in ?");
 
   final SQLStmt deletePendingTrace = new SQLStmt(
       "DELETE FROM " + TABLE_PENDING_TRACE + " WHERE trace_id = ?;");
 
   final SQLStmt updateCompleteTrace = new SQLStmt( // 1 is the dirty bit
-      "UPSERT INTO " + TABLE_COMPLETE_TRACE + " VALUES (?, 1, ?, ?)");
+      "UPSERT INTO " + TABLE_COMPLETE_TRACE + " VALUES (?, 1, ?)");
 
   public VoltTable run(String partitionKey, int maxTraces, long minAgeSeconds,
       long maxAgeSeconds) {
@@ -70,7 +70,7 @@ public class CompletePendingTraces extends VoltProcedure {
 
     VoltTable result = new VoltTable(
         new VoltTable.ColumnInfo("trace_id", VoltType.STRING),
-        new VoltTable.ColumnInfo("is_sampled", VoltType.TINYINT)
+        new VoltTable.ColumnInfo("should_export", VoltType.TINYINT)
     );
     if (oldTraceIdTable.getRowCount() == 0) return result; // no rows
 
@@ -81,14 +81,15 @@ public class CompletePendingTraces extends VoltProcedure {
 
     for (String trace_id : completeTraceIds) {
       voltQueueSQL(deletePendingTrace, EXPECT_SCALAR_MATCH(1), trace_id);
-      Byte is_sampled = traceToSampledStatus.get(trace_id);
-      if (is_sampled == null) { // then this is the first time we make a decision on this trace
-        is_sampled = (byte) (SAMPLER.isSampled() ? 1 : 0);
-        // TODO: a real sampling impl could consider the entire trace. We should make one.. perhaps
-        // mimicking our SpanStore query logic.
+      Byte should_export = traceToSampledStatus.get(trace_id);
+      if (should_export == null) { // then this is the first time we make a decision on this trace
+        should_export = (byte) (SAMPLER.isSampled() ? 1 : 0);
+        // TODO: a real sampling impl could consider the entire trace. We could make one.. perhaps
+        // mimicking our SpanStore query logic. Note that if we did, this implies pulling more data
+        // than what the heuristic check requires
       }
-      voltQueueSQL(updateCompleteTrace, EXPECT_SCALAR_MATCH(1), trace_id, is_sampled);
-      result.addRow(trace_id, is_sampled);
+      voltQueueSQL(updateCompleteTrace, EXPECT_SCALAR_MATCH(1), trace_id, should_export);
+      result.addRow(trace_id, should_export);
     }
     voltExecuteSQL(true);
     return result;
@@ -193,15 +194,15 @@ public class CompletePendingTraces extends VoltProcedure {
   }
 
   Map<String, Byte> getSampledStatus(List<String> traceIds) {
-    voltQueueSQL(selectSampledStatus, (Object) traceIds.toArray(new String[0]));
+    voltQueueSQL(selectExportStatus, (Object) traceIds.toArray(new String[0]));
     VoltTable selectSampledStatusTable = voltExecuteSQL()[0];
     if (selectSampledStatusTable.getRowCount() == 0) return Collections.emptyMap();
 
     Map<String, Byte> result = new LinkedHashMap<>();
     while (selectSampledStatusTable.advanceRow()) {
       String trace_id = selectSampledStatusTable.getString(0);
-      Byte is_sampled = (Byte) selectSampledStatusTable.get(1, VoltType.TINYINT);
-      result.put(trace_id, is_sampled);
+      Byte should_export = (Byte) selectSampledStatusTable.get(1, VoltType.TINYINT);
+      result.put(trace_id, should_export);
     }
     return result;
   }
