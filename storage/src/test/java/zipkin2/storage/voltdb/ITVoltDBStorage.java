@@ -13,7 +13,6 @@
  */
 package zipkin2.storage.voltdb;
 
-import java.io.IOException;
 import java.util.List;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -23,9 +22,7 @@ import org.junit.experimental.runners.Enclosed;
 import org.junit.runner.RunWith;
 import org.voltdb.client.Client;
 import zipkin2.Span;
-import zipkin2.TestObjects;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static zipkin2.storage.voltdb.Schema.PROCEDURE_COMPLETE_PENDING_TRACES;
 import static zipkin2.storage.voltdb.Schema.PROCEDURE_LINK_COMPLETE_TRACES;
 
@@ -46,14 +43,6 @@ public class ITVoltDBStorage {
 
     @Before public void clear() throws Exception {
       voltdb.clear();
-    }
-
-    @Test public void dupesOk() throws IOException {
-      accept(TestObjects.TRACE.toArray(new Span[0]));
-      accept(TestObjects.TRACE.toArray(new Span[0]));
-
-      assertThat(store().getTrace(TestObjects.TRACE.get(0).traceId()).execute())
-          .containsExactlyInAnyOrderElementsOf(TestObjects.TRACE);
     }
 
     // Below need some thinking as we need compound queries and it appears statements need to be
@@ -80,6 +69,12 @@ public class ITVoltDBStorage {
     }
 
     @Override @Test @Ignore("TODO") public void getTraces_maxDuration() {
+    }
+
+    @Override @Test @Ignore("TODO") public void getTraces_lateDuration() {
+    }
+
+    @Override @Test @Ignore("TODO") public void readback_minimalErrorSpan() throws Exception {
     }
   }
 

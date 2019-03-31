@@ -23,8 +23,8 @@ import zipkin2.Call;
 import zipkin2.Callback;
 import zipkin2.Span;
 import zipkin2.codec.SpanBytesEncoder;
+import zipkin2.internal.AggregateCall;
 import zipkin2.storage.SpanConsumer;
-import zipkin2.storage.voltdb.internal.AggregateCall;
 
 import static zipkin2.storage.voltdb.Schema.PROCEDURE_STORE_SPAN;
 
@@ -49,7 +49,7 @@ final class VoltDBSpanConsumer implements SpanConsumer {
     if (spans.isEmpty()) return Call.create(null);
     List<Call<Void>> calls = new ArrayList<>();
     for (Span span : spans) calls.add(StoreSpanJsonCall.create(client, span));
-    return AggregateCall.create(calls);
+    return AggregateCall.newVoidCall(calls);
   }
 
   static final class StoreSpanJsonCall extends VoltDBCall<Void> implements Call.ErrorHandler<Void> {
